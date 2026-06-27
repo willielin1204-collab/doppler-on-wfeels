@@ -76,7 +76,10 @@
             100% { transform: scale(1.18); }
         }
         .hero-photo {
+            /* 後備：不支援 image-set 的瀏覽器用 JPEG */
             background-image: url('assets/hero-dow8.jpg');
+            /* 支援的瀏覽器優先載入較小的 WebP，否則自動退回 JPEG */
+            background-image: image-set(url('assets/hero-dow8.webp') type('image/webp'), url('assets/hero-dow8.jpg') type('image/jpeg'));
             background-size: cover;
             background-position: center 38%;
             transform: scale(1.06);
