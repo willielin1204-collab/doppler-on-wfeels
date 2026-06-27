@@ -1,0 +1,1760 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>追風者的怪獸卡車：DOW (Doppler on Wheels) 跨世代探索器</title>
+
+    <!-- SEO 基本描述 -->
+    <meta name="description" content="互動式探索 DOW (Doppler on Wheels) 移動式多普勒雷達車隊：即時 PPI／RHI／天頂掃描模擬、DOW 1–8 家族進化史、3D 結構互動模型，以及追風傳奇 Josh Wurman 的真實風暴觀測故事。">
+    <meta name="keywords" content="DOW, Doppler on Wheels, 多普勒雷達, 龍捲風, 追風, 氣象雷達, Josh Wurman, FARM, 雙偏振雷達, PPI, RHI">
+    <meta name="author" content="氣象風暴觀測戰術指揮部">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#020617">
+
+    <!-- Open Graph / 社群分享預覽 -->
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="zh_TW">
+    <meta property="og:title" content="追風者的怪獸卡車：DOW 跨世代探索器">
+    <meta property="og:description" content="即時雷達掃描模擬、DOW 家族進化史與 3D 結構互動模型，帶你登上迎戰龍捲風的移動式多普勒雷達車。">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="追風者的怪獸卡車：DOW 跨世代探索器">
+    <meta name="twitter:description" content="即時雷達掃描模擬、DOW 家族進化史與 3D 結構互動模型，帶你登上迎戰龍捲風的移動式多普勒雷達車。">
+
+    <!-- 內嵌 SVG favicon（衛星天線圖示，免額外請求、避免 404） -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23020617'/><circle cx='50' cy='50' r='28' fill='none' stroke='%2310b981' stroke-width='6'/><circle cx='50' cy='50' r='6' fill='%2310b981'/></svg>">
+
+    <!-- 預先建立第三方資源連線，加速首次載入 -->
+    <link rel="preconnect" href="https://cdn.tailwindcss.com">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://unpkg.com">
+    <link rel="preconnect" href="https://commons.wikimedia.org">
+    <link rel="preconnect" href="https://upload.wikimedia.org">
+
+    <!-- Tailwind CSS 引入 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome 圖標引入 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Three.js 3D 引擎與滑鼠軌道控制器（defer：延後到 HTML 解析完成後才執行，不阻塞首屏） -->
+    <script defer src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+    <script defer src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        @keyframes radar-pulse {
+            0% { transform: scale(0.95); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+            100% { transform: scale(0.95); opacity: 0.5; }
+        }
+        @keyframes lightning {
+            0%, 95%, 98%, 100% { opacity: 0.15; }
+            96%, 99% { opacity: 0.8; }
+        }
+        .radar-glow {
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+        }
+        .lightning-bg {
+            animation: lightning 8s infinite;
+        }
+        /* 自訂滾動條 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111827;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4B5563;
+        }
+        /* 尊重使用者的「減少動態」系統偏好，降低暈眩與電量消耗 */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.001ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.001ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans flex flex-col justify-between">
+
+    <!-- 🎬 Discovery 級電影感沉浸式風暴敘事首頁 -->
+    <section class="min-h-screen relative flex flex-col items-center justify-between text-center p-6 bg-[radial-gradient(ellipse_at_center,#0f172a_0%,#000000_70%)] overflow-hidden border-b border-slate-800">
+        <!-- 閃電背景效果 -->
+        <div class="absolute inset-0 bg-indigo-900/10 pointer-events-none lightning-bg"></div>
+        <!-- 碳纖維暗色網格裝飾 -->
+        <div class="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]"></div>
+        
+        <!-- 頂部提示 -->
+        <div class="z-10 mt-6">
+            <span class="px-4 py-1.5 bg-red-950/80 border border-red-500/40 text-red-500 text-xs font-mono rounded-full tracking-widest uppercase animate-pulse">
+                ⚠️ TORNADO EMERGENCY WARNING // VORTEX-MISSION
+            </span>
+        </div>
+
+        <!-- 敘事核心 -->
+        <div class="max-w-4xl z-10 space-y-6 px-4">
+            <p class="text-xs md:text-sm font-mono tracking-widest text-emerald-400 uppercase">DISCOVERY CHANNEL SPECIAL PRESENTATION</p>
+            <h1 class="text-5xl md:text-8xl font-black tracking-tight text-white italic uppercase">
+                風暴獵手的 <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-amber-500 to-red-600">怪獸卡車</span>
+            </h1>
+            <div class="h-1 w-24 bg-gradient-to-r from-emerald-500 to-red-500 mx-auto"></div>
+            <p class="text-lg md:text-2xl text-slate-300 leading-relaxed max-w-3xl mx-auto italic font-light">
+                「當天空轉為詭異的墨綠、氣壓驟降，所有人都在瘋狂逃命……只有他們，會把重達數噸的精密雷達裝在重型卡車上，迎面衝向直徑一公里的龍捲風心臟。」
+            </p>
+            <p class="text-sm text-slate-400 max-w-2xl mx-auto">
+                這是關於 DOW (Doppler on Wheels) 移動式多普勒雷達車隊與追風傳奇 Josh Wurman 搏命採集風場數據、提早預警時間拯救無數生命的真實冒險。
+            </p>
+        </div>
+
+        <!-- 指引向下按鈕 -->
+        <div class="z-10 mb-8">
+            <button onclick="scrollToControl()" class="px-8 py-4 bg-emerald-600 hover:bg-emerald-500 border border-emerald-400/50 text-slate-950 font-black text-sm tracking-wider rounded-full transition-all hover:scale-105 shadow-lg shadow-emerald-500/20 uppercase flex items-center gap-2">
+                <span>進入移動式雷達控制艙</span> <i class="fa-solid fa-angles-down animate-bounce"></i>
+            </button>
+        </div>
+    </section>
+
+    <!-- 頂部導航 (控制艙錨點) -->
+    <header id="tactical-navbar" class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50 px-4 py-3 scroll-mt-0">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-emerald-600 flex items-center justify-center text-white radar-glow">
+                    <i class="fa-solid fa-satellite-dish text-xl animate-spin" style="animation-duration: 8s;"></i>
+                </div>
+                <div>
+                    <span class="block text-xl font-bold tracking-wider text-emerald-400">DOW TACTICAL MOBILE LAB</span>
+                    <p class="text-xs text-slate-400 font-mono">UAH / FARM MOBILE SYSTEM COMMAND</p>
+                </div>
+            </div>
+            <!-- 控制按鈕組 -->
+            <div class="flex items-center gap-2">
+                <a href="#model3d-section" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-md text-xs flex items-center gap-2 text-emerald-300 transition-all">
+                    <i class="fa-solid fa-cube"></i> 3D 結構模型
+                </a>
+                <button onclick="playPingSound()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-md text-xs flex items-center gap-2 text-emerald-300 transition-all">
+                    <i class="fa-solid fa-volume-high"></i> 測試雷達波頻
+                </button>
+                <span class="px-2.5 py-1 bg-emerald-950/80 border border-emerald-500/30 text-emerald-400 text-xs rounded-full flex items-center gap-1.5 font-mono animate-pulse">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span> 戰地雷達連線中
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主內容區 -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
+        
+        <!-- 左側：多普勒雷達即時模擬控制台 (7/12) -->
+        <section class="lg:col-span-7 flex flex-col gap-6">
+            
+            <!-- 雷達顯示螢幕 -->
+            <div id="radar-stage" class="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col items-center justify-center relative overflow-hidden shadow-2xl">
+                <div class="absolute top-4 left-4 text-xs font-mono text-slate-500 z-10">
+                    <div>SYS.LOC: NORTH FLORIDA / FARM TASK</div>
+                    <div>FREQ: X-BAND (DBZHC)</div>
+                </div>
+                <div class="absolute top-4 right-4 text-xs font-mono text-emerald-400 flex items-center gap-1 z-10 text-right">
+                    <span id="currentModeText">PPI 平面位置掃描 ・ REFLECTIVITY (Z)</span>
+                </div>
+
+                <!-- 三種標準掃描模式切換 -->
+                <div class="w-full grid grid-cols-3 gap-1.5 mt-8 mb-1">
+                    <button onclick="changeScanType('ppi')" id="scanTypeBtn-ppi" class="scan-type-btn py-1.5 rounded text-xs font-mono font-bold transition-all bg-emerald-900/30 border border-emerald-500 text-emerald-400">
+                        PPI<span class="hidden sm:inline">・平面位置掃描</span>
+                    </button>
+                    <button onclick="changeScanType('rhi')" id="scanTypeBtn-rhi" class="scan-type-btn py-1.5 rounded text-xs font-mono font-bold transition-all bg-slate-950 border border-slate-800 hover:border-emerald-500/50 text-slate-400 hover:text-emerald-400">
+                        RHI<span class="hidden sm:inline">・距離高度掃描</span>
+                    </button>
+                    <button onclick="changeScanType('zenith')" id="scanTypeBtn-zenith" class="scan-type-btn py-1.5 rounded text-xs font-mono font-bold transition-all bg-slate-950 border border-slate-800 hover:border-emerald-500/50 text-slate-400 hover:text-emerald-400">
+                        ZENITH<span class="hidden sm:inline">・天頂指向</span>
+                    </button>
+                </div>
+                <p id="scanTypeDesc" class="text-[10px] text-slate-500 text-center mb-2 leading-relaxed px-2">天線維持固定仰角，進行 360 度水平旋轉掃描，繪製大範圍降水與水平風場分布圖。</p>
+
+                <!-- PPI: 圓形雷達螢幕外框 -->
+                <div id="ppiWrapper" class="relative w-full max-w-[440px] aspect-square rounded-full border-4 border-slate-800 p-1 bg-black flex items-center justify-center radar-glow my-2">
+                    <div class="absolute inset-0 rounded-full border border-emerald-500/10 pointer-events-none"></div>
+                    <div class="absolute inset-x-0 top-1/2 h-[1px] bg-emerald-500/15 pointer-events-none"></div>
+                    <div class="absolute inset-y-0 left-1/2 w-[1px] bg-emerald-500/15 pointer-events-none"></div>
+                    <canvas id="radarScreen" role="img" aria-label="PPI 平面位置雷達掃描即時模擬畫面" class="w-full h-full rounded-full cursor-crosshair" width="420" height="420"></canvas>
+                </div>
+
+                <!-- RHI: 垂直剖面矩形螢幕 -->
+                <div id="rhiWrapper" class="hidden relative w-full max-w-[440px] border-4 border-slate-800 p-1 bg-black radar-glow my-2" style="aspect-ratio: 420/300;">
+                    <canvas id="rhiScreen" role="img" aria-label="RHI 距離高度雷達垂直剖面模擬畫面" class="w-full h-full cursor-crosshair" width="420" height="300"></canvas>
+                </div>
+
+                <!-- ZENITH: 時間-高度矩形螢幕 -->
+                <div id="zenithWrapper" class="hidden relative w-full max-w-[440px] border-4 border-slate-800 p-1 bg-black radar-glow my-2" style="aspect-ratio: 420/300;">
+                    <canvas id="zenithScreen" role="img" aria-label="天頂指向時間-高度雷達剖面模擬畫面" class="w-full h-full cursor-crosshair" width="420" height="300"></canvas>
+                </div>
+
+                <!-- 雷達控制器 -->
+                <div class="w-full grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
+                    <div>
+                        <label for="radarMode" class="block text-xs text-slate-400 mb-1 font-mono">雷達模式</label>
+                        <select id="radarMode" onchange="changeRadarMode()" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs text-emerald-400 font-mono focus:outline-none focus:border-emerald-500">
+                            <option value="reflectivity">回波強度 (Reflectivity)</option>
+                            <option value="velocity">風場風速 (Velocity)</option>
+                        </select>
+                    </div>
+                    <div id="azimuthControl" class="hidden">
+                        <label for="rhiAzimuth" class="block text-xs text-slate-400 mb-1 font-mono">RHI 方位角 <span id="azimuthValue" class="text-emerald-400">45°</span></label>
+                        <input type="range" id="rhiAzimuth" min="0" max="359" value="45" oninput="document.getElementById('azimuthValue').innerText = this.value + '°'" class="w-full accent-emerald-500 h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    <div id="sweepSpeedControl">
+                        <label for="sweepSpeed" class="block text-xs text-slate-400 mb-1 font-mono">天線旋轉速度</label>
+                        <input type="range" id="sweepSpeed" min="1" max="5" value="3" class="w-full accent-emerald-500 h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    <div>
+                        <label for="stormIntensity" class="block text-xs text-slate-400 mb-1 font-mono">暴風雨強度</label>
+                        <input type="range" id="stormIntensity" min="1" max="10" value="7" class="w-full accent-emerald-500 h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    <div class="flex items-end">
+                        <button onclick="triggerTornado()" class="w-full py-1.5 bg-red-950/80 hover:bg-red-900 border border-red-500/40 text-red-400 font-bold text-xs rounded transition-all flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-wind animate-pulse"></i> 模擬龍捲風
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 控制台數值警報面板 -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-slate-950 p-3 rounded border border-slate-800">
+                    <span class="text-xs text-slate-500 block font-mono">MAX REFLECTIVITY</span>
+                    <span id="maxDbz" class="text-2xl font-bold font-mono text-red-500">68.5 <span class="text-xs text-slate-400">dBZ</span></span>
+                    <p class="text-[10px] text-red-400/80 mt-1"><i class="fa-solid fa-triangle-exclamation"></i> 偵測到大型冰雹與強降雨核心</p>
+                </div>
+                <div class="bg-slate-950 p-3 rounded border border-slate-800">
+                    <span class="text-xs text-slate-500 block font-mono">MAX ROTATION VELOCITY</span>
+                    <span id="maxVelocity" class="text-2xl font-bold font-mono text-blue-400">74.2 <span class="text-xs text-slate-400">m/s</span></span>
+                    <p class="text-[10px] text-blue-400/80 mt-1"><i class="fa-solid fa-gauge-high"></i> 極端氣旋切變 (EF-4 等勢)</p>
+                </div>
+                <div class="bg-slate-950 p-3 rounded border border-slate-800">
+                    <span class="text-xs text-slate-500 block font-mono">DOW SENSOR GPS</span>
+                    <span class="text-sm font-semibold font-mono text-emerald-400 block mt-1">30.1175° N, 83.5821° W</span>
+                    <p class="text-[10px] text-slate-400 mt-1">佛羅里達州 佩里 (Perry, FL)</p>
+                </div>
+            </div>
+
+            <!-- 真實歷史紀錄彩蛋：與上方模擬數據做區隔 -->
+            <div class="bg-slate-900 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3 shadow-md">
+                <i class="fa-solid fa-scroll text-amber-400 text-lg mt-0.5 animate-pulse"></i>
+                <div>
+                    <p class="text-xs font-bold text-amber-400 font-mono mb-1">📜 真實歷史觀測紀錄（非本頁模擬數據）</p>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        1999 年 5 月 3 日，DOW 在奧克拉荷馬 Bridge Creek–Moore 龍捲風中，於<span class="font-bold text-slate-200">離地約 100 公尺</span>高度測得瞬時風速 <span class="font-bold text-amber-300">321 mph（約 143.5 m/s）</span>（此數據為 2021 年大氣科學家進行高精度重新分析後的上修數值），至今仍是地球上實測最高的龍捲風風速紀錄。上方儀表板的 dBZ／m/s 數字為雷達即時模擬之互動波形，方便您體驗現場調控。
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 右側：DOW 家族進化史 & ✨ Gemini AI 協同官 (5/12) -->
+        <section class="lg:col-span-5 flex flex-col gap-6">
+            
+            <!-- 車輛詳細展示面板 -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between shadow-2xl">
+                <div>
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <span class="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] uppercase font-mono rounded" id="vehicleEra">Pioneer Era</span>
+                            <h2 class="text-xl font-black text-white mt-1" id="vehicleName">DOW 3 (Doppler on Wheels 3)</h2>
+                        </div>
+                        <span class="text-xs font-mono text-slate-400 bg-slate-950 px-2 py-1 rounded border border-slate-800" id="vehicleYear">2000年服役</span>
+                    </div>
+
+                    <!-- 歷史照片展示框 -->
+                    <div class="relative w-full aspect-[4/3] rounded-lg overflow-hidden border border-slate-800 bg-slate-950 flex items-center justify-center group mb-4">
+                        <img id="vehicleImage" src="https://commons.wikimedia.org/wiki/Special:FilePath/Doppler_on_Wheels_3_(DOW_3)_Participating_in_Intermountain_Precipitation_EXperiment_(IPEX)_2000.jpg" alt="DOW 3 多普勒雷達車歷史照片" loading="lazy" decoding="async" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" onerror="handleImageError(this)">
+                        
+                        <div id="fallbackSvg" class="hidden absolute inset-0 flex flex-col items-center justify-center p-6 bg-slate-950 text-center">
+                            <svg class="w-24 h-24 text-emerald-500/40 mb-3" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <rect x="15" y="55" width="55" height="25" rx="2" />
+                                <rect x="70" y="62" width="18" height="18" rx="2" />
+                                <circle cx="28" cy="80" r="8" fill="#1e293b" />
+                                <circle cx="62" cy="80" r="8" fill="#1e293b" />
+                                <path d="M40 30 L40 55 M30 30 L50 30 M25 25 L40 30 L55 25" stroke-width="2"/>
+                                <path d="M20 20 A 25 25 0 0 1 60 20" stroke-dasharray="2,2"/>
+                            </svg>
+                            <span class="text-xs text-slate-400">現場雷達車結構示意圖</span>
+                        </div>
+
+                        <div class="absolute bottom-2 right-2 bg-black/70 px-2 py-1 rounded text-[10px] font-mono text-slate-400">
+                            HISTORIC DOW PHOTO
+                        </div>
+                    </div>
+
+                    <!-- 規格參數 -->
+                    <div class="grid grid-cols-2 gap-2 mb-3">
+                        <div class="bg-slate-950/80 p-2 rounded border border-slate-800/60">
+                            <span class="text-[9px] text-slate-500 block uppercase font-mono">雷達天線尺寸</span>
+                            <span class="text-xs font-semibold font-mono text-slate-200" id="specAntenna">2.44 米 拋物線天線</span>
+                        </div>
+                        <div class="bg-slate-950/80 p-2 rounded border border-slate-800/60">
+                            <span class="text-[9px] text-slate-500 block uppercase font-mono">載重卡車底盤</span>
+                            <span class="text-xs font-semibold font-mono text-slate-200" id="specChassis">International 4700 卡車</span>
+                        </div>
+                        <div class="bg-slate-950/80 p-2 rounded border border-slate-800/60">
+                            <span class="text-[9px] text-slate-500 block uppercase font-mono">頻段與極化</span>
+                            <span class="text-xs font-semibold font-mono text-slate-200" id="specBand">X-Band 單偏振雷達</span>
+                        </div>
+                        <div class="bg-slate-950/80 p-2 rounded border border-slate-800/60">
+                            <span class="text-[9px] text-slate-500 block uppercase font-mono">主要歷史任務</span>
+                            <span class="text-xs font-semibold font-mono text-emerald-400" id="specMissions">IPEX 2000, VORTEX 1 & 2</span>
+                        </div>
+                    </div>
+
+                    <p class="text-xs text-slate-300 leading-relaxed bg-slate-950 p-2.5 rounded border border-slate-800" id="vehicleDesc">
+                        DOW 3 是移動氣象雷達黃金時期的主力功臣。在2000年的猶他州「山際降雨實驗 (IPEX)」中大放異彩。
+                    </p>
+                </div>
+
+                <!-- DOW 1 ~ 8 車型快速選擇切換器 -->
+                <div class="mt-4">
+                    <span class="text-xs text-slate-400 block mb-1.5 font-mono"><i class="fa-solid fa-list"></i> 選擇 DOW 家族系列車型</span>
+                    <div class="grid grid-cols-4 gap-1.5">
+                        <button onclick="selectVehicle(1)" class="vehicle-btn p-1.5 bg-slate-950 border border-slate-800 hover:border-emerald-500/50 rounded text-center transition-all text-xs font-mono font-bold hover:text-emerald-400" data-id="1">
+                            DOW 1&2
+                        </button>
+                        <button onclick="selectVehicle(3)" class="vehicle-btn p-1.5 bg-emerald-900/30 border border-emerald-500 rounded text-center transition-all text-xs font-mono font-bold text-emerald-400" data-id="3">
+                            DOW 3
+                        </button>
+                        <button onclick="selectVehicle(5)" class="vehicle-btn p-1.5 bg-slate-950 border border-slate-800 hover:border-emerald-500/50 rounded text-center transition-all text-xs font-mono font-bold hover:text-emerald-400" data-id="5">
+                            DOW 5
+                        </button>
+                        <button onclick="selectVehicle(6)" class="vehicle-btn p-1.5 bg-slate-950 border border-slate-800 hover:border-emerald-500/50 rounded text-center transition-all text-xs font-mono font-bold hover:text-emerald-400" data-id="6">
+                            DOW 6
+                        </button>
+                        <button onclick="selectVehicle(7)" class="vehicle-btn p-1.5 bg-slate-950 border border-slate-800 hover:border-emerald-500/50 rounded text-center transition-all text-xs font-mono font-bold hover:text-emerald-400" data-id="7">
+                            DOW 7
+                        </button>
+                        <button onclick="selectVehicle(8)" class="vehicle-btn p-1.5 bg-slate-950 border border-slate-800 hover:border-emerald-500/50 rounded text-center transition-all text-xs font-mono font-bold hover:text-emerald-400" data-id="8">
+                            DOW 8
+                        </button>
+                        <button onclick="selectVehicle('convoy')" class="vehicle-btn col-span-2 p-1.5 bg-slate-950 border border-slate-800 hover:border-emerald-500/50 rounded text-center transition-all text-xs font-mono font-bold hover:text-emerald-400" data-id="convoy">
+                            DOW 車隊
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ✨ 升級：Gemini AI 戰地風暴分析儀 (UI 標示為 3.5 協同官，後台穩定串接) -->
+            <div class="bg-slate-900 border border-emerald-500/30 rounded-xl p-5 shadow-xl flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="flex h-3 w-3 relative">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                            </span>
+                            <h3 class="font-bold text-sm text-emerald-400 tracking-wider">✨ AI 3.5 戰地協同指揮官</h3>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-mono text-slate-500">POWERED BY GEMINI 2.5</span>
+                            <button onclick="toggleApiKeyPanel()" class="text-[10px] font-mono text-slate-500 hover:text-emerald-400 underline">⚙ 設定金鑰</button>
+                        </div>
+                    </div>
+
+                    <!-- API Key 設定面板 -->
+                    <div id="apiKeyPanel" class="hidden mb-3 p-2.5 bg-slate-950 border border-slate-800 rounded text-xs flex flex-col gap-2">
+                        <p class="text-slate-400 leading-relaxed">這個頁面如果不是在 Google AI Studio 的 Canvas 環境裡執行，AI 功能需要您自行貼上 Gemini API Key 才能運作。金鑰將儲存於您的瀏覽器 localStorage 中。<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" class="text-emerald-400 underline">取得金鑰</a></p>
+                        <div class="flex gap-2">
+                            <input type="password" id="userApiKeyInput" placeholder="貼上您的 Gemini API Key" class="flex-1 bg-slate-900 border border-slate-800 rounded px-2 py-1 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500">
+                            <button onclick="saveUserApiKey()" class="px-2.5 py-1 bg-emerald-900/50 hover:bg-emerald-800 border border-emerald-500/40 text-emerald-300 rounded">儲存</button>
+                            <button onclick="clearUserApiKey()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-400 rounded">清除</button>
+                        </div>
+                        <p id="apiKeyStatus" class="text-slate-500"></p>
+                    </div>
+
+                    <!-- 輸入提問框 -->
+                    <div class="flex flex-col gap-2 mb-3">
+                        <textarea id="aiInput" rows="2" class="w-full bg-slate-950 text-xs border border-slate-800 rounded p-2 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-sans" placeholder="可點擊下方按鈕診斷當前雷達，或在此大膽諮詢任何大氣氣旋戰術..."></textarea>
+                        
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="analyzeCurrentRadar()" class="p-2 bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-500/40 hover:border-emerald-400 rounded text-left transition-all text-xs text-emerald-300 flex items-center gap-1.5 justify-center">
+                                <i class="fa-solid fa-calculator"></i> ✨ 智能回波診斷
+                            </button>
+                            <button onclick="sendCustomQuery()" class="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-left transition-all text-xs text-slate-300 flex items-center gap-1.5 justify-center">
+                                <i class="fa-solid fa-paper-plane"></i> ✨ 諮詢雷達戰術
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- AI 回覆區域 -->
+                    <div class="bg-slate-950 border border-slate-800 rounded p-3 h-48 overflow-y-auto relative flex flex-col" id="aiOutputContainer">
+                        <div id="aiPlaceholder" class="text-slate-500 text-xs flex flex-col items-center justify-center h-full gap-2 text-center p-4">
+                            <i class="fa-solid fa-robot text-lg text-slate-700"></i>
+                            <p>點擊「✨ 智能回波診斷」或直接提問，AI 指揮官將即刻分析 DOW 車身參數與當前雷達圖譜，為您撰寫戰術風暴告警日誌。</p>
+                        </div>
+                        <div id="aiLoading" class="hidden text-emerald-400 text-xs flex flex-col items-center justify-center h-full gap-2 text-center">
+                            <i class="fa-solid fa-compact-disc animate-spin text-lg"></i>
+                            <p class="animate-pulse">正在接收 DOW 雷達數據... 解析雙偏振對流結構中...</p>
+                        </div>
+                        <div id="aiContent" class="hidden text-xs text-slate-200 leading-relaxed whitespace-pre-wrap font-sans"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ✨ 全新獨立區塊：DOW 雷達車 3D 結構互動模型 -->
+    <section id="model3d-section" class="max-w-7xl w-full mx-auto p-4 mt-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-2xl">
+            <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-4 border-b border-slate-800 pb-3">
+                <div>
+                    <h2 class="text-xl font-black text-white flex items-center gap-2"><i class="fa-solid fa-cube text-emerald-400"></i> DOW 雷達車 3D 結構互動模型</h2>
+                    <p class="text-xs text-slate-400 mt-1">通用示意模型，對應典型 DOW 雷達車的核心結構配置（參考車輛結構剖析圖繪製）。</p>
+                </div>
+                <p class="text-xs text-slate-500 font-mono"><i class="fa-solid fa-arrows-rotate"></i> 拖曳旋轉視角　<i class="fa-solid fa-magnifying-glass ml-2"></i> 滾輪縮放　<i class="fa-solid fa-hand-pointer ml-2"></i> 點擊零件看說明</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <!-- 3D 渲染畫布容器 -->
+                <div class="lg:col-span-2 relative">
+                    <div id="model3dCanvasWrap" class="w-full h-[420px] sm:h-[480px] bg-slate-950 rounded-lg border border-slate-800 overflow-hidden relative cursor-grab active:cursor-grabbing"></div>
+                    <div id="model3dTooltip" class="hidden absolute pointer-events-none bg-slate-950/95 border border-emerald-500/50 text-emerald-300 text-xs font-mono px-2 py-1 rounded shadow-lg z-20"></div>
+                </div>
+
+                <!-- 零件說明面板 -->
+                <div class="bg-slate-950 border border-slate-800 rounded-lg p-4 flex flex-col">
+                    <span class="text-xs font-mono text-slate-500 uppercase mb-2">COMPONENT INFO</span>
+                    <h3 id="partInfoTitle" class="text-lg font-bold text-emerald-400 mb-2">點擊任一零件</h3>
+                    <p id="partInfoDesc" class="text-sm text-slate-300 leading-relaxed flex-grow">滑鼠移過或點擊左側 3D 模型上的零件熱點（綠色光點），這裡會顯示該零件的功能說明，內容對應實際 DOW 雷達車的結構配置。</p>
+                    <div class="mt-3 pt-3 border-t border-slate-800">
+                        <span class="text-[10px] text-slate-500 block mb-1.5 font-mono">全部零件：</span>
+                        <div id="partsQuickList" class="flex flex-wrap gap-1.5"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 腳部宣告 -->
+    <footer class="border-t border-slate-800 bg-slate-900 px-4 py-6 mt-8">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-400">
+            <p class="leading-relaxed">
+                © 2026 氣象風暴觀測戰術指揮部. 本專案之 DOW 歷史影像與學術文獻均來自美國國家海洋暨大氣總署 (NOAA) 與維基共享公開資料庫。
+                <br>
+                DOW 計畫由大氣科學家 Joshua Wurman 創立，現由 <span class="font-bold text-slate-200">FARM（Flexible Array of Radars and Mesonets，隸屬阿拉巴馬大學亨茨維爾分校 UAH）</span> 負責日常管理與科研部署，前身為科羅拉多州波德的 CSWR。
+            </p>
+            <div class="flex gap-4 shrink-0">
+                <a href="https://en.wikipedia.org/wiki/Doppler_on_Wheels" target="_blank" rel="noopener noreferrer" class="hover:text-emerald-400 transition-colors">大氣多普勒觀測文獻</a>
+                <span>|</span>
+                <a href="#" onclick="location.reload(); return false;" class="hover:text-emerald-400 transition-colors">系統重置</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript 雷達運算、戰地模擬、與 Gemini API 串接 -->
+    <script>
+        // 1. 車輛資料庫數據 (精確查證版)
+        const vehicles = {
+            1: {
+                id: 1,
+                name: "DOW 1 & DOW 2 (初代發展史)",
+                era: "PIONEER ERA (1995-1997)",
+                year: "DOW1: 1995年服役 / DOW2: 1997年服役",
+                image: "https://commons.wikimedia.org/wiki/Special:FilePath/Doppler_on_Wheels_1_and_2_in_garage.jpg",
+                antenna: "1.82 米 拋物線天線",
+                chassis: "軍規級與中型平板卡車",
+                band: "X-Band 單偏振雷達",
+                missions: "VORTEX 1995 (歷史首次完整錄下龍捲風誕生雷達數據)",
+                desc: "DOW 1 是 Joshua Wurman 團隊於 1995 年用舊軍用飛彈追蹤雷達天線座、搭配 NCAR CP-2 發射機拼裝而成的單機先驅，趕在 VORTEX-95 任務前完工，於德州 Dimmitt 成功捕獲歷史上第一個完整的龍捲風生成過程雷達數據。圖中右側的 DOW 2 則於 1997 年完工——值得注意的是，真正的「雙子星」拍檔其實是 DOW 2 與同年完工的 DOW 3，而非與 DOW 1 同批次。"
+            },
+            3: {
+                id: 3,
+                name: "DOW 3 (多功能山地雙子星)",
+                era: "PIONEER ERA (1997)",
+                year: "1997年服役 (與 DOW 2 同期完工的雙子星)",
+                image: "https://commons.wikimedia.org/wiki/Special:FilePath/Doppler_on_Wheels_3_(DOW_3)_Participating_in_Intermountain_Precipitation_EXperiment_(IPEX)_2000.jpg",
+                antenna: "2.44 米 拋物線天線",
+                chassis: "International 4700 卡車",
+                band: "X-Band 雙發射機大功率雷達",
+                missions: "MAP 1999 (阿爾卑斯氣象觀測), IPEX 2000 (山際降水實驗)",
+                desc: "DOW 3 與 DOW 2 在 1997 年同期完工，是真正的「雙子星」拍檔，配備雙 250kW 發射機與 2.44 米拋物線天線，大幅升級了發射功率與解析度。1999 年遠赴歐洲阿爾卑斯山執行 MAP 計劃，2000 年參與猶他州「山際降水實驗」(IPEX)，成功克服複雜山地地形干擾，為山地暴雨研究立下汗馬功勞。"
+            },
+            5: {
+                id: 5,
+                name: "DOW 5 (Rapid Scan 快速掃描先鋒)",
+                era: "RAPID RECON ERA (2003)",
+                year: "2003年服役",
+                image: "https://commons.wikimedia.org/wiki/Special:FilePath/Doppler_on_Wheels_5_(DOW_5)_Rapid_Scan_with_Tornado_2003.jpg",
+                antenna: "特製多波束平面相控陣天線",
+                chassis: "Heavy duty F-650 戰術重卡",
+                band: "X-Band 快速多掃描雷達",
+                missions: "VORTEX 2, 2003 俄克拉荷馬大龍捲風直擊",
+                desc: "DOW 5 搭載了劃時代的「快速掃描 (Rapid Scan)」天線，可在數秒內完成一次全方位的立體掃描，極大解決了龍捲風快速演變、雷達跟不上的歷史難題。圖為 2003 年它極近距離觀測超大型龍捲風時的實照。"
+            },
+            6: {
+                id: 6,
+                name: "DOW 6 (現代化雙偏振先導車)",
+                era: "MODERN ERA (2009)",
+                year: "2009年服役",
+                image: "https://commons.wikimedia.org/wiki/Special:FilePath/Doppler_on_Wheels_6_(DOW_6)_2009_VORTEX_2.jpg",
+                antenna: "2.44 米 雙偏振(Dual-Pol)天線",
+                chassis: "Peterbilt 340 豪華重卡底盤",
+                band: "X-Band 雙偏振高速多普勒",
+                missions: "VORTEX 2, 颶風哈維 (Harvey) 登陸觀測",
+                desc: "DOW 6 是進入「雙偏振 (Dual-Polarization)」大氣探測時代的主力。它不僅能測量風速，還能精準分辨天空中掉下來的是雨滴、雪花、還是破壞性強大的大冰雹。它曾數次駛入四級颶風的核心眼牆進行觀測。"
+            },
+            7: {
+                id: 7,
+                name: "DOW 7 (巨型升降桅桿雷達)",
+                era: "MODERN ERA (2009-2015)",
+                year: "2009年服役",
+                image: "https://commons.wikimedia.org/wiki/Special:FilePath/Doppler_on_Wheels_7_(DOW_7)_PECAN_2015_Media_Day.jpg",
+                antenna: "2.44 米 雙偏振高精細雷達",
+                chassis: "Peterbilt 重型客製底盤",
+                band: "X-Band 雙向偏振（升降式）",
+                missions: "PECAN 2015, VORTEX 2",
+                desc: "DOW 7 最大的亮點是配備了高空液壓升降桅桿，能將重達數噸的雷達天線垂直舉升至數米高空。這能完美避開周圍樹木與建築物阻擋，獲得極低空龍捲風生成邊界層的珍貴科學數據。"
+            },
+            8: {
+                id: 8,
+                name: "DOW 8 (新世代雙偏振主力)",
+                era: "MODERN ERA (2015)",
+                year: "2015年服役",
+                image: "https://commons.wikimedia.org/wiki/Special:FilePath/Doppler_on_Wheels_8_(DOW_8)_PECAN_2015_Media_Day.jpg",
+                antenna: "雙偏振寬波束雷達天線",
+                chassis: "International 客製重裝卡車",
+                band: "X-Band 雙偏振高速多普勒",
+                missions: "PECAN 2015 (大平原中尺度夜間對流實驗)",
+                desc: "DOW 8 跟其他 DOW 家族成員一樣採用 X-Band 雙偏振雷達，於 2015 年 PECAN 任務首次亮相。請注意不要與 COW (C-band On Wheels) 搞混——COW 其實是 2018 年才為阿根廷 RELAMPAGO 任務全新打造、可自行展開 12.5 英呎天線的獨立 C 頻段車型，跟 DOW 8 是不同世代、不同頻段、不同任務的兩台車。"
+            },
+            "convoy": {
+                id: "convoy",
+                name: "DOW 戰術車隊大集結",
+                era: "FLEET ASSEMBLY",
+                year: "2015年至今",
+                image: "https://commons.wikimedia.org/wiki/Special:FilePath/Doppler_on_Wheels_Convoy_2015.png",
+                antenna: "全系列多種波段雷達陣列",
+                chassis: "Peterbilt, International 聯合編隊",
+                band: "多頻段協同觀測網",
+                missions: "PECAN 2015, RELAMPAGO 2018 (阿根廷野外觀測)",
+                desc: "這是一張難得一見的 DOW 戰術車隊大編隊行駛實景照。在大型科學任務（如 PECAN）中，多台 DOW 卡車會同時散開並在相距 10-30 公里的位置架設。透過雙多普勒（Dual-Doppler）雷達立體交叉掃描，能建立三維空間中完整的風暴風場結構模型！"
+            }
+        };
+
+        // 追風車當前狀態記錄
+        let currentVehicleId = 3;
+
+        // 滑動導航至雷達控制艙
+        function scrollToControl() {
+            document.getElementById('tactical-navbar').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // 2. 處理圖片載入失敗 (改用高質感 SVG 雷達示意圖)
+        function handleImageError(imgElement) {
+            console.log("圖片讀取失敗，自動載入高質感科技風格 SVG 備用：", imgElement.src);
+            document.getElementById('fallbackSvg').classList.remove('hidden');
+            imgElement.style.opacity = '0';
+        }
+
+        // 3. 切換 DOW 車款
+        function selectVehicle(id) {
+            document.getElementById('fallbackSvg').classList.add('hidden');
+            document.getElementById('vehicleImage').style.opacity = '1';
+
+            const v = vehicles[id];
+            if (!v) return;
+
+            currentVehicleId = id;
+
+            // 更改 UI 各項文字與屬性
+            document.getElementById('vehicleName').innerText = v.name;
+            document.getElementById('vehicleEra').innerText = v.era;
+            document.getElementById('vehicleYear').innerText = v.year;
+            const imgEl = document.getElementById('vehicleImage');
+            imgEl.src = v.image;
+            imgEl.alt = v.name + ' 多普勒雷達車歷史照片';
+            document.getElementById('specAntenna').innerText = v.antenna;
+            document.getElementById('specChassis').innerText = v.chassis;
+            document.getElementById('specBand').innerText = v.band;
+            document.getElementById('specMissions').innerText = v.missions;
+            document.getElementById('vehicleDesc').innerText = v.desc;
+
+            // 更新按鈕 active 樣式
+            document.querySelectorAll('.vehicle-btn').forEach(btn => {
+                const btnId = btn.getAttribute('data-id');
+                if (btnId == id) {
+                    btn.className = "vehicle-btn p-1.5 bg-emerald-900/30 border border-emerald-500 rounded text-center transition-all text-xs font-mono font-bold text-emerald-400";
+                } else {
+                    btn.className = "vehicle-btn p-1.5 bg-slate-950 border border-slate-800 hover:border-emerald-500/50 rounded text-center transition-all text-xs font-mono font-bold hover:text-emerald-400";
+                }
+            });
+
+            // 播放一聲雷達測試聲
+            playPingSound(440 + (id === 'convoy' ? 100 : id * 50));
+        }
+
+        // 4. Web Audio API 雷達測試音效產生器
+        let audioCtx = null;
+        function playPingSound(freq = 520) {
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(freq / 2, audioCtx.currentTime + 0.4);
+
+                gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.5);
+            } catch (e) {
+                console.log("Web Audio API 音效解鎖中。");
+            }
+        }
+
+        // ==========================================
+        // 5. 🛠️ 全新重構：UAH/FARM 專業雷達 PPI/RHI/Zenith 三模式掃描系統
+        // ==========================================
+        const canvas = document.getElementById('radarScreen');
+        const ctx = canvas.getContext('2d');
+        let sweepAngle = 0;
+        let tornadoSimulation = false;
+        let tornadoTimer = 0;
+        let scanType = 'ppi'; // 'ppi' | 'rhi' | 'zenith'
+        let simTime = 0; // 由主迴圈以 rAF 時間戳累加的模擬時鐘，三種模式共用，確保資料一致
+
+        // 建立離線緩衝 Canvas，用來繪製並維持「雷達餘暉與氣象回波」(僅 PPI 使用)
+        const offscreenCanvas = document.createElement('canvas');
+        offscreenCanvas.width = 420;
+        offscreenCanvas.height = 420;
+        const oCtx = offscreenCanvas.getContext('2d');
+
+        // 定義 dBZ 與徑向速度的配色表 (精確復刻 images.jpeg 專業色卡)
+        function getRadarColor(val, mode) {
+            if (mode === 'reflectivity') {
+                // dBZ 降雨反射率色帶 (從 -15dBZ 藍色到 50+dBZ 極致粉色/白色)
+                if (val < -15) return 'rgba(0,0,0,0)';
+                if (val < -5)  return 'rgba(23, 37, 84, 0.2)';   // 深藍 (雜訊/低密度對流)
+                if (val < 5)   return 'rgba(13, 148, 136, 0.35)'; // 青/藍綠
+                if (val < 15)  return 'rgba(34, 197, 94, 0.55)';  // 翠綠 (輕度降雨)
+                if (val < 25)  return 'rgba(163, 230, 53, 0.7)';  // 黃綠 (中度降雨)
+                if (val < 35)  return 'rgba(234, 179, 8, 0.85)';  // 明黃 (強對流)
+                if (val < 45)  return 'rgba(239, 68, 68, 0.95)';  // 深紅 (冰雹邊緣/暴雨核心)
+                return 'rgba(236, 72, 153, 0.98)';              // 桃粉/白紫 (極端冰雹核 TDS)
+            } else {
+                // 徑向速度色標 (多普勒風速：負值藍色代表朝向雷達，正值紅色代表遠離雷達)
+                if (Math.abs(val) < 5) return 'rgba(0,0,0,0)';
+                if (val < 0) {
+                    const ratio = Math.min(1, Math.abs(val) / 80);
+                    return `rgba(59, 130, 246, ${0.4 + ratio * 0.55})`; // 朝向 (綠藍)
+                } else {
+                    const ratio = Math.min(1, val / 80);
+                    return `rgba(239, 68, 68, ${0.4 + ratio * 0.55})`; // 遠離 (紅黃)
+                }
+            }
+        }
+
+        // 氣旋核心位置：唯一真相來源 (Single Source of Truth)。
+        // 用 simTime 驅動緩慢的有界飄移(模擬導引氣流帶著風暴系統移動)，
+        // 而不是無限累積的線性位移，這樣 PPI/RHI/Zenith 三種視角任何時候取樣都會得到同一場風暴、
+        // 而且風暴不會永遠飄出雷達掃描範圍之外。
+        function getStormCenter() {
+            const t = simTime;
+            // 基準中心點離雷達站(210,210)較近(原本是離站約44px，現在約20px)，
+            // 讓 Zenith(天頂指向)模式有更高機率看到風暴飄過正上方的精彩結構，
+            // 同時飄移幅度(55/35)仍夠大，PPI 視角依然能看到風暴離開中心的動態畫面。
+            let scX = 215 + Math.sin(t * 0.00008) * 55 + Math.sin(t * 0.00003) * 20;
+            let scY = 195 + Math.cos(t * 0.00006) * 35 + Math.cos(t * 0.00002) * 15;
+            if (tornadoSimulation) {
+                scX += Math.sin(t * 0.006) * 15;
+                scY += Math.cos(t * 0.006) * 15;
+            }
+            return { x: scX, y: scY };
+        }
+
+        // 大氣科學流體力學：模擬具有經典「釣鉤回波 (Hook Echo)」的超大胞風暴 (水平結構，近地面切面)
+        function queryAtmosphereValue(x, y, mode, centerOverride) {
+            // 物理坐標轉換 (Perry 測站為中心 210, 210)
+            const centerX = 210;
+            const centerY = 210;
+            const dx = x - centerX;
+            const dy = y - centerY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance > 200) return -20; // 限制在雷達動態觀測範圍內
+
+            const center = centerOverride || getStormCenter();
+            const scX = center.x;
+            const scY = center.y;
+
+            const sDx = x - scX;
+            const sDy = y - scY;
+            const sDist = Math.sqrt(sDx * sDx + sDy * sDy);
+            const sAngle = Math.atan2(sDy, sDx); // 弧度
+
+            let val = -20;
+
+            if (mode === 'reflectivity') {
+                // A. 寬廣的 stratiform 輕降雨帶
+                const rainband = Math.sin(sAngle - sDist * 0.03) * 15 - (sDist * 0.1);
+                if (rainband > -5) {
+                    val = Math.max(val, 8 + rainband);
+                }
+
+                // B. 超大胞主要上升氣流核心與強降雨 FFD (前側下沉)
+                if (sDist < 90) {
+                    // 核心高回波
+                    const coreVal = 48 - (sDist * 0.4);
+                    val = Math.max(val, coreVal);
+                }
+
+                // C. 經典釣鉤回波 (Hook Echo) 數值公式
+                // 釣鉤是一條延伸出去、在特定角度與半徑扭曲的螺旋曲線
+                const targetAngle = 1.6; // 南側偏東
+                const hookSpiral = sAngle - (sDist * 0.06);
+                const angleDiff = Math.abs(hookSpiral - targetAngle);
+                
+                if (sDist < 70 && sDist > 15 && angleDiff < 0.4) {
+                    // 強烈氣旋捲入產生的極強回波
+                    const hookIntensity = (1.0 - angleDiff / 0.4) * 48 - (sDist * 0.15);
+                    val = Math.max(val, hookIntensity);
+                }
+
+                // D. 冰雹核心 (TDS - Tornado Debris Signature)
+                if (sDist < 12) {
+                    val = Math.max(val, 55 - sDist * 1.5);
+                }
+
+                // E. 弱回波入流槽 (Inflow Notch) 屏蔽 (乾空氣抽入)
+                const notchAngle = sAngle - 0.5; // 東南側
+                if (sDist < 45 && sDist > 8 && Math.abs(notchAngle) < 0.5) {
+                    val = Math.max(-20, val - 35);
+                }
+
+                // 加上逼真的大氣雷達噪訊擾動 (Radar Noise)
+                if (val > -15) {
+                    val += (Math.random() - 0.5) * 6;
+                }
+            } else {
+                // 風速模式 (徑向速度 Velocity V)
+                // 經典氣旋風場：一側朝向雷達(藍)，一側遠離雷達(紅)，形成強烈的「偶極子」切變 (Couplet)
+                if (sDist < 100) {
+                    // 以氣旋中心切變風場
+                    const rotationSpeed = (tornadoSimulation ? 85 : 45) * Math.exp(-sDist * 0.015);
+                    // 朝向/遠離分量
+                    const tangentialX = -Math.sin(sAngle) * rotationSpeed;
+                    const tangentialY = Math.cos(sAngle) * rotationSpeed;
+                    
+                    // 投影至雷達徑向 (向外向量)
+                    const radialX = dx / (distance || 1);
+                    const radialY = dy / (distance || 1);
+                    
+                    val = (tangentialX * radialX + tangentialY * radialY);
+                    val += (Math.random() - 0.5) * 8; // 亂流擾動
+                } else {
+                    // 背景平流風場 (向東北漂移)
+                    val = 15 * Math.cos(Math.atan2(dy, dx) - 0.7);
+                }
+            }
+
+            return val;
+        }
+
+        // 高度剖面：讓同一場水平風暴結構往上空延伸時，依高度增強或減弱。
+        // 這是把 2D 水平模型擴充成「立體風暴」的關鍵，讓 RHI(垂直剖面)與 Zenith(時間-高度)
+        // 看到的，其實是 PPI 同一場風暴在不同高度切面上的樣子。
+        function heightProfile(zKm, sDist, mode) {
+            if (zKm < 0) zKm = 0;
+            if (mode === 'reflectivity') {
+                // 融化層亮帶 (bright band)：約在 4km 高度附近，雪花融化成雨滴時回波會短暫增強
+                const brightBand = Math.exp(-Math.pow((zKm - 4) / 1.0, 2)) * 0.18;
+                // 核心對流區(sDist小)上升氣流強勁，回波可以一路延伸到 12-14km 高空；
+                // 外圍層雲區域則只有約 5km 高
+                const coreBoost = Math.max(0, 1 - sDist / 90);
+                const topHeight = 5 + coreBoost * 9;
+                let vertical = Math.max(0, 1 - Math.pow(zKm / topHeight, 2.2));
+                if (zKm < 0.4) vertical *= (0.7 + zKm * 0.75); // 近地面稍微減弱
+                return Math.min(1.15, vertical + brightBand);
+            } else {
+                // 風速：中低層(約2km)旋轉最強，往上往下都逐漸減弱
+                const peakHeight = 2.2;
+                const spread = 3.2;
+                return Math.exp(-Math.pow((zKm - peakHeight) / spread, 2));
+            }
+        }
+
+        // 立體風暴查詢：RHI 與 Zenith 都呼叫這個函式，確保跟 PPI 共用同一份水平結構與氣旋中心
+        function queryStormVolume(x, y, zKm, mode) {
+            const center = getStormCenter(); // 只算一次，傳給下面重複利用
+            const horizontal = queryAtmosphereValue(x, y, mode, center);
+            const sDist = Math.sqrt((x - center.x) ** 2 + (y - center.y) ** 2);
+            const profile = heightProfile(zKm, sDist, mode);
+            return horizontal * profile;
+        }
+
+        function triggerTornado() {
+            tornadoSimulation = true;
+            tornadoTimer = 250;
+            playPingSound(880);
+            setTimeout(() => playPingSound(740), 120);
+            setTimeout(() => playPingSound(620), 240);
+        }
+
+        function updateModeLabel() {
+            const radarMode = document.getElementById('radarMode').value;
+            const modeText = document.getElementById('currentModeText');
+            const scanNameMap = { ppi: 'PPI 平面位置掃描', rhi: 'RHI 距離高度掃描', zenith: 'ZENITH 天頂指向' };
+            const dataNameMap = radarMode === 'reflectivity' ? 'REFLECTIVITY (Z)' : 'VELOCITY (V)';
+            modeText.innerText = `${scanNameMap[scanType]} ・ ${dataNameMap}`;
+            modeText.className = radarMode === 'reflectivity' ? "text-xs font-mono text-emerald-400 flex items-center gap-1 z-10 text-right" : "text-xs font-mono text-blue-400 flex items-center gap-1 z-10 text-right";
+        }
+
+        function changeRadarMode() {
+            updateModeLabel();
+            // 重置緩衝畫布避免殘留
+            oCtx.clearRect(0, 0, 420, 420);
+            playPingSound(600);
+        }
+
+        // 切換 PPI / RHI / Zenith 三種標準掃描模式
+        function changeScanType(type) {
+            scanType = type;
+            ['ppi', 'rhi', 'zenith'].forEach(t => {
+                const btn = document.getElementById('scanTypeBtn-' + t);
+                if (t === type) {
+                    btn.className = "scan-type-btn py-1.5 rounded text-xs font-mono font-bold transition-all bg-emerald-900/30 border border-emerald-500 text-emerald-400";
+                } else {
+                    btn.className = "scan-type-btn py-1.5 rounded text-xs font-mono font-bold transition-all bg-slate-950 border border-slate-800 hover:border-emerald-500/50 text-slate-400 hover:text-emerald-400";
+                }
+            });
+            document.getElementById('ppiWrapper').classList.toggle('hidden', type !== 'ppi');
+            document.getElementById('rhiWrapper').classList.toggle('hidden', type !== 'rhi');
+            document.getElementById('zenithWrapper').classList.toggle('hidden', type !== 'zenith');
+            document.getElementById('azimuthControl').classList.toggle('hidden', type !== 'rhi');
+            document.getElementById('sweepSpeedControl').classList.toggle('hidden', type === 'zenith');
+
+            const descMap = {
+                ppi: '天線維持固定仰角，進行 360 度水平旋轉掃描，繪製大範圍降水與水平風場分布圖。',
+                rhi: '天線固定在某個方位角，進行垂直方向的上下俯仰掃描，剖析風暴或降水系統的垂直結構。',
+                zenith: '天線直指正上方，監測特定點上空的大氣垂直運動、雲層發展或微氣象數據隨時間的演變。'
+            };
+            document.getElementById('scanTypeDesc').innerText = descMap[type];
+
+            updateModeLabel();
+            playPingSound(type === 'ppi' ? 600 : (type === 'rhi' ? 680 : 760));
+        }
+
+        // 主要 PPI 徑向雷達掃描與渲染迴圈
+        function drawPPI() {
+            const speedSelector = document.getElementById('sweepSpeed').value;
+            const stormIntensity = document.getElementById('stormIntensity').value / 10;
+            const radarMode = document.getElementById('radarMode').value;
+
+            // 1. 離線畫布應用極度細緻的緩慢淡出 (Fade effect)
+            oCtx.fillStyle = 'rgba(0, 0, 0, 0.035)'; // 控制雷達餘暉殘留時間
+            oCtx.globalCompositeOperation = 'destination-out';
+            oCtx.fillRect(0, 0, 420, 420);
+            oCtx.globalCompositeOperation = 'source-over';
+
+            // 2. 旋轉雷達探測天線
+            const prevSweepAngle = sweepAngle;
+            sweepAngle += (speedSelector * 0.012);
+            if (sweepAngle >= Math.PI * 2) {
+                sweepAngle = 0;
+                playPingSound(800);
+            }
+
+            // 3. 在離線畫布上繪製當前「掃描扇區剖面」的氣象回波
+            // 為了避免產生掃描空隙，我們在 prevSweepAngle 與 sweepAngle 之間進行多點插值掃描
+            const steps = 4;
+            for (let step = 0; step < steps; step++) {
+                const currentAngle = prevSweepAngle + (sweepAngle - prevSweepAngle) * (step / steps);
+                const cosA = Math.cos(currentAngle);
+                const sinA = Math.sin(currentAngle);
+
+                // 沿著雷達射束徑向向外取樣
+                for (let r = 5; r < 200; r += 1.5) {
+                    const x = 210 + cosA * r;
+                    const y = 210 + sinA * r;
+
+                    const rawVal = queryAtmosphereValue(x, y, radarMode);
+                    const scaledVal = rawVal * stormIntensity;
+
+                    const color = getRadarColor(scaledVal, radarMode);
+                    if (color !== 'rgba(0,0,0,0)') {
+                        oCtx.fillStyle = color;
+                        oCtx.beginPath();
+                        // 越往外雷達波束散開，點的尺寸微調變大
+                        oCtx.arc(x, y, 1.6 + (r * 0.008), 0, Math.PI * 2);
+                        oCtx.fill();
+                    }
+                }
+            }
+
+            // 4. 清除主 Canvas 並繪製基礎「地理資訊與地圖背景」 (保持常亮不淡出)
+            ctx.fillStyle = '#080d1a'; // 專業雷達背景深藍黑色
+            ctx.fillRect(0, 0, 420, 420);
+
+            // 5. 繪製地理邊界線：佛羅里達 Big Bend 擬真海岸線 (細黃綠/青色線條)
+            ctx.strokeStyle = '#27354a';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(30, 240);
+            ctx.bezierCurveTo(120, 250, 220, 310, 310, 410); // 海岸線
+            ctx.stroke();
+
+            // 6. 繪製主幹道 (細棕色線條)
+            ctx.strokeStyle = '#3e2c1c';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(20, 110); ctx.lineTo(400, 100); // 模擬 I-10 公路
+            ctx.moveTo(90, 120); ctx.lineTo(210, 210); ctx.lineTo(340, 350); // US-19 公路
+            ctx.stroke();
+
+            // 7. 將離線回波畫布繪製到主 Canvas
+            ctx.drawImage(offscreenCanvas, 0, 0);
+
+            // 8. 繪製雷達同心距離環與方位格網線
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.07)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 3]);
+            for (let r = 50; r <= 200; r += 50) {
+                ctx.beginPath();
+                ctx.arc(210, 210, r, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            ctx.setLineDash([]);
+
+            // 9. 繪製亮綠色雷達旋轉天線發射波
+            ctx.beginPath();
+            ctx.moveTo(210, 210);
+            ctx.lineTo(210 + Math.cos(sweepAngle) * 200, 210 + Math.sin(sweepAngle) * 200);
+            ctx.strokeStyle = 'rgba(16, 185, 129, 0.55)';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // 10. 繪製地理都市名稱與標示點 (常亮)
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.font = '10px sans-serif';
+            
+            // 佩里觀測站中心 (Perry)
+            ctx.fillStyle = '#67e8f9';
+            ctx.beginPath(); ctx.arc(210, 210, 3.5, 0, Math.PI * 2); ctx.fill();
+            ctx.fillText("Perry (DOW)", 218, 214);
+
+            // 周邊城市標註
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.fillText("Tallahassee", 70, 130);
+            ctx.fillText("Greenville", 220, 100);
+            ctx.fillText("Madison", 300, 90);
+            ctx.fillText("Horseshoe Beach", 280, 380);
+
+            // 11. 復刻 images.jpeg 左側垂直專業 dBZ 色標對照表
+            const scaleX = 15;
+            const scaleY = 60;
+            const scaleW = 12;
+            const scaleH = 280;
+            
+            // 繪製色帶漸層
+            const dbzGrad = ctx.createLinearGradient(scaleX, scaleY, scaleX, scaleY + scaleH);
+            dbzGrad.addColorStop(0, getRadarColor(55, 'reflectivity'));
+            dbzGrad.addColorStop(0.15, getRadarColor(45, 'reflectivity'));
+            dbzGrad.addColorStop(0.3, getRadarColor(35, 'reflectivity'));
+            dbzGrad.addColorStop(0.45, getRadarColor(25, 'reflectivity'));
+            dbzGrad.addColorStop(0.6, getRadarColor(15, 'reflectivity'));
+            dbzGrad.addColorStop(0.75, getRadarColor(5, 'reflectivity'));
+            dbzGrad.addColorStop(0.9, getRadarColor(-5, 'reflectivity'));
+            dbzGrad.addColorStop(1, 'rgba(23, 37, 84, 0.2)');
+
+            ctx.fillStyle = dbzGrad;
+            ctx.fillRect(scaleX, scaleY, scaleW, scaleH);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.strokeRect(scaleX, scaleY, scaleW, scaleH);
+
+            // 繪製 dBZ 刻度文字
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.font = '8px monospace';
+            const ticks = [50, 40, 30, 20, 10, 0, -10, -20];
+            ticks.forEach((tick, i) => {
+                const tickY = scaleY + (i / (ticks.length - 1)) * scaleH;
+                ctx.fillText(tick, scaleX + scaleW + 4, tickY + 3);
+            });
+            ctx.fillText("dBZ", scaleX - 2, scaleY - 6);
+
+            // 12. 繪製雷達頂部即時運作數據 (PPI Metadata)
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.font = '10px monospace';
+            const now = new Date();
+            const timeString = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+            ctx.fillText(`${timeString} DOW6low 1.70° PPI`, 40, 25);
+            ctx.fillStyle = 'rgba(16, 185, 129, 0.5)';
+            ctx.font = 'bold 12px sans-serif';
+            ctx.fillText("UAH / FARM", 40, 44);
+        }
+
+        // RHI：天線固定方位角，垂直俯仰掃描，剖析風暴垂直結構
+        let rhiElevAngle = 5;
+        let rhiElevDir = 1;
+        function drawRHI() {
+            const stormIntensity = document.getElementById('stormIntensity').value / 10;
+            const radarMode = document.getElementById('radarMode').value;
+            const azimuthDeg = parseFloat(document.getElementById('rhiAzimuth').value);
+            const azimuthRad = azimuthDeg * Math.PI / 180;
+            const speedSelector = document.getElementById('sweepSpeed').value;
+
+            const rc = document.getElementById('rhiScreen');
+            const rctx = rc.getContext('2d');
+            const W = 420, H = 300;
+
+            rctx.fillStyle = '#080d1a';
+            rctx.fillRect(0, 0, W, H);
+
+            const maxRangeKm = 80;  // 顯示距離 0~80km
+            const maxHeightKm = 15; // 顯示高度 0~15km
+            const plotLeft = 35, plotTop = 18, plotW = W - plotLeft - 12, plotH = H - plotTop - 28;
+
+            // 取樣繪製垂直剖面熱力圖：x軸=沿方位角的距離，y軸=高度
+            const colSteps = 70, rowSteps = 42;
+            for (let ci = 0; ci <= colSteps; ci++) {
+                const rangeKm = (ci / colSteps) * maxRangeKm;
+                const rangePx = rangeKm * 2.5; // px/km 比例尺，沿用既有座標系統
+                const wx = 210 + Math.cos(azimuthRad) * rangePx;
+                const wy = 210 + Math.sin(azimuthRad) * rangePx;
+                const px = plotLeft + (ci / colSteps) * plotW;
+                const cellW = plotW / colSteps + 1;
+
+                for (let ri = 0; ri <= rowSteps; ri++) {
+                    const heightKm = (ri / rowSteps) * maxHeightKm;
+                    const rawVal = queryStormVolume(wx, wy, heightKm, radarMode);
+                    const scaledVal = rawVal * stormIntensity;
+                    const color = getRadarColor(scaledVal, radarMode);
+                    if (color !== 'rgba(0,0,0,0)') {
+                        rctx.fillStyle = color;
+                        const py = plotTop + plotH - (ri / rowSteps) * plotH; // 高度越高 y 越小
+                        rctx.fillRect(px, py - (plotH / rowSteps), cellW, plotH / rowSteps + 1);
+                    }
+                }
+            }
+
+            // 座標框與刻度
+            rctx.strokeStyle = 'rgba(255,255,255,0.15)';
+            rctx.lineWidth = 1;
+            rctx.strokeRect(plotLeft, plotTop, plotW, plotH);
+
+            rctx.fillStyle = 'rgba(255,255,255,0.5)';
+            rctx.font = '9px monospace';
+            [0, 3, 6, 9, 12, 15].forEach(h => {
+                const py = plotTop + plotH - (h / maxHeightKm) * plotH;
+                rctx.fillText(h + 'km', 2, py + 3);
+                rctx.strokeStyle = 'rgba(255,255,255,0.05)';
+                rctx.beginPath(); rctx.moveTo(plotLeft, py); rctx.lineTo(plotLeft + plotW, py); rctx.stroke();
+            });
+            [0, 20, 40, 60, 80].forEach(r => {
+                const px = plotLeft + (r / maxRangeKm) * plotW;
+                rctx.fillText(r + 'km', px - 8, plotTop + plotH + 14);
+            });
+
+            // 仰角掃描指示線 (模擬天線在固定方位角上下俯仰擺動)
+            rhiElevAngle += rhiElevDir * (speedSelector * 0.25);
+            if (rhiElevAngle > 70) { rhiElevAngle = 70; rhiElevDir = -1; }
+            if (rhiElevAngle < 0) { rhiElevAngle = 0; rhiElevDir = 1; }
+            const elevRad = rhiElevAngle * Math.PI / 180;
+            const lineLen = Math.min(plotW / Math.max(Math.cos(elevRad), 0.05), plotH / Math.max(Math.sin(elevRad), 0.05));
+            rctx.beginPath();
+            rctx.moveTo(plotLeft, plotTop + plotH);
+            rctx.lineTo(plotLeft + Math.cos(elevRad) * lineLen, plotTop + plotH - Math.sin(elevRad) * lineLen);
+            rctx.strokeStyle = 'rgba(16, 185, 129, 0.6)';
+            rctx.lineWidth = 1.5;
+            rctx.stroke();
+
+            rctx.fillStyle = 'rgba(255,255,255,0.8)';
+            rctx.font = '10px monospace';
+            rctx.fillText(`RHI 方位角 ${azimuthDeg.toFixed(0)}° ・ 仰角 ${rhiElevAngle.toFixed(0)}°`, plotLeft, 11);
+        }
+
+        // ZENITH：天線直指正上方，繪製時間-高度捲動圖
+        let zenithHistory = [];
+        const zenithHeightSteps = 60;
+        const zenithMaxCols = 150;
+        let zenithFrameCounter = 0;
+        function drawZenith() {
+            const stormIntensity = document.getElementById('stormIntensity').value / 10;
+            const radarMode = document.getElementById('radarMode').value;
+
+            const zc = document.getElementById('zenithScreen');
+            const zctx = zc.getContext('2d');
+            const W = 420, H = 300;
+            const plotLeft = 35, plotTop = 18, plotW = W - plotLeft - 12, plotH = H - plotTop - 28;
+            const maxHeightKm = 15;
+
+            // 每隔幾個 frame 取樣一次「目前頭頂正上方」的高度剖面，捲動式累積成時間序列
+            zenithFrameCounter++;
+            if (zenithFrameCounter % 3 === 0) {
+                const col = [];
+                for (let ri = 0; ri <= zenithHeightSteps; ri++) {
+                    const heightKm = (ri / zenithHeightSteps) * maxHeightKm;
+                    col.push(queryStormVolume(210, 210, heightKm, radarMode));
+                }
+                zenithHistory.push(col);
+                if (zenithHistory.length > zenithMaxCols) zenithHistory.shift();
+            }
+
+            zctx.fillStyle = '#080d1a';
+            zctx.fillRect(0, 0, W, H);
+
+            const colW = plotW / zenithMaxCols;
+            zenithHistory.forEach((col, idx) => {
+                const px = plotLeft + idx * colW;
+                col.forEach((rawVal, ri) => {
+                    const scaledVal = rawVal * stormIntensity;
+                    const color = getRadarColor(scaledVal, radarMode);
+                    if (color !== 'rgba(0,0,0,0)') {
+                        const py = plotTop + plotH - (ri / zenithHeightSteps) * plotH;
+                        zctx.fillStyle = color;
+                        zctx.fillRect(px, py - plotH / zenithHeightSteps, colW + 0.5, plotH / zenithHeightSteps + 1);
+                    }
+                });
+            });
+
+            zctx.strokeStyle = 'rgba(255,255,255,0.15)';
+            zctx.lineWidth = 1;
+            zctx.strokeRect(plotLeft, plotTop, plotW, plotH);
+
+            zctx.fillStyle = 'rgba(255,255,255,0.5)';
+            zctx.font = '9px monospace';
+            [0, 3, 6, 9, 12, 15].forEach(h => {
+                const py = plotTop + plotH - (h / maxHeightKm) * plotH;
+                zctx.fillText(h + 'km', 2, py + 3);
+                zctx.strokeStyle = 'rgba(255,255,255,0.05)';
+                zctx.beginPath(); zctx.moveTo(plotLeft, py); zctx.lineTo(plotLeft + plotW, py); zctx.stroke();
+            });
+
+            zctx.fillStyle = 'rgba(255,255,255,0.8)';
+            zctx.font = '10px monospace';
+            zctx.fillText('天頂指向 ・ 時間-高度剖面', plotLeft, 11);
+            zctx.fillStyle = 'rgba(255,255,255,0.45)';
+            zctx.font = '9px monospace';
+            zctx.fillText('← 過去', plotLeft, plotTop + plotH + 14);
+            zctx.fillText('現在 →', plotLeft + plotW - 32, plotTop + plotH + 14);
+        }
+
+        // 數值警報面板：獨立於目前顯示的是哪個掃描模式，永遠取「全圓盤範圍內」的即時最大值，
+        // 這樣 PPI/RHI/Zenith 三個模式切著看，這兩個數字呈現的都是「同一場風暴」目前的狀態，
+        // 不會因為你切到 RHI/Zenith 就看不到風暴最新的強度。
+        function updateStatPanel() {
+            const stormIntensity = document.getElementById('stormIntensity').value / 10;
+            let maxDbz = -20;
+            let maxVel = 0;
+            const steps = 14;
+            for (let i = 0; i <= steps; i++) {
+                for (let j = 0; j <= steps; j++) {
+                    const x = 10 + (400 / steps) * i;
+                    const y = 10 + (400 / steps) * j;
+                    const dbz = queryAtmosphereValue(x, y, 'reflectivity') * stormIntensity;
+                    if (dbz > maxDbz) maxDbz = dbz;
+                    const vel = Math.abs(queryAtmosphereValue(x, y, 'velocity')) * stormIntensity;
+                    if (vel > maxVel) maxVel = vel;
+                }
+            }
+
+            if (tornadoSimulation) {
+                tornadoTimer--;
+                maxDbz = Math.max(58, maxDbz);
+                maxVel = Math.max(65, maxVel);
+                if (tornadoTimer <= 0) {
+                    tornadoSimulation = false;
+                }
+            } else {
+                maxDbz = Math.max(20, maxDbz);
+                maxVel = Math.max(12, maxVel);
+            }
+
+            document.getElementById('maxDbz').innerText = (maxDbz + Math.random() * 2).toFixed(1) + " dBZ";
+            document.getElementById('maxVelocity').innerText = (maxVel + Math.random() * 1.5).toFixed(1) + " m/s";
+        }
+
+        // 主動畫迴圈：用 rAF 時間戳累加 simTime，三種掃描模式共用同一個時鐘與同一場風暴。
+        // 以 radarRunning 旗標控制：雷達畫面捲出視窗或分頁切到背景時暫停迴圈，省下 CPU 與電量；
+        // 重新可見時重設時間戳再接續，避免把暫停期間的時間一次補進來造成畫面跳動。
+        let lastFrameTs = null;
+        let radarRunning = false;
+        function masterLoop(ts) {
+            if (!radarRunning) return;
+            if (lastFrameTs === null) lastFrameTs = ts;
+            const dt = ts - lastFrameTs;
+            lastFrameTs = ts;
+            simTime += dt;
+
+            updateStatPanel();
+
+            if (scanType === 'ppi') {
+                drawPPI();
+            } else if (scanType === 'rhi') {
+                drawRHI();
+            } else {
+                drawZenith();
+            }
+
+            requestAnimationFrame(masterLoop);
+        }
+
+        function startRadarLoop() {
+            if (radarRunning) return;
+            radarRunning = true;
+            lastFrameTs = null;
+            requestAnimationFrame(masterLoop);
+        }
+
+        function stopRadarLoop() {
+            radarRunning = false;
+        }
+
+        // ==========================================
+        // 6. ✨ GEMINI API LLM 整合邏輯 (戰術氣象大腦)
+        // ==========================================
+        const apiKey = ""; // 預留給環境動態注入的金鑰變數
+
+        function getEffectiveApiKey() {
+            return apiKey || localStorage.getItem('dow_gemini_api_key') || "";
+        }
+
+        function toggleApiKeyPanel() {
+            document.getElementById('apiKeyPanel').classList.toggle('hidden');
+        }
+
+        function saveUserApiKey() {
+            const input = document.getElementById('userApiKeyInput');
+            const val = input.value.trim();
+            if (val) {
+                localStorage.setItem('dow_gemini_api_key', val);
+                input.value = "";
+                updateApiKeyStatus();
+            }
+        }
+
+        function clearUserApiKey() {
+            localStorage.removeItem('dow_gemini_api_key');
+            updateApiKeyStatus();
+        }
+
+        function updateApiKeyStatus() {
+            const statusEl = document.getElementById('apiKeyStatus');
+            if (!statusEl) return;
+            if (apiKey) {
+                statusEl.innerText = "✅ 偵測到執行環境自動帶入的金鑰，AI 功能可正常使用。";
+            } else if (localStorage.getItem('dow_gemini_api_key')) {
+                statusEl.innerText = "✅ 目前使用您儲存在本機瀏覽器的自訂金鑰。";
+            } else {
+                statusEl.innerText = "⚠️ 尚未設定金鑰，AI 功能目前無法使用，請在上方貼上您的 Gemini API Key。";
+            }
+        }
+
+        async function callGemini(prompt, systemInstruction = "") {
+            const key = getEffectiveApiKey();
+            if (!key) {
+                throw new Error("NO_API_KEY");
+            }
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }]
+            };
+            if (systemInstruction) {
+                payload.systemInstruction = { parts: [{ text: systemInstruction }] };
+            }
+
+            let delay = 1000;
+            for (let i = 0; i < 5; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error(`HTTP 錯誤狀態碼: ${response.status}`);
+                    const data = await response.json();
+                    return data.candidates?.[0]?.content?.parts?.[0]?.text || "無法生成回應內容。";
+                } catch (error) {
+                    if (i === 4) throw error; 
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2; 
+                }
+            }
+        }
+
+        function setAiLoading(isLoading) {
+            const placeholder = document.getElementById('aiPlaceholder');
+            const loading = document.getElementById('aiLoading');
+            const content = document.getElementById('aiContent');
+            
+            if (isLoading) {
+                placeholder.classList.add('hidden');
+                loading.classList.remove('hidden');
+                content.classList.add('hidden');
+            } else {
+                loading.classList.add('hidden');
+            }
+        }
+
+        function showAiContent(text, isError = false) {
+            const content = document.getElementById('aiContent');
+            content.classList.remove('hidden');
+            content.innerText = text;
+            if (isError) {
+                content.className = "text-xs text-red-400 font-mono leading-relaxed whitespace-pre-wrap p-2 border border-red-900 bg-red-950/20 rounded";
+            } else {
+                content.className = "text-xs text-slate-200 leading-relaxed whitespace-pre-wrap font-sans";
+            }
+        }
+
+        async function analyzeCurrentRadar() {
+            setAiLoading(true);
+            playPingSound(900);
+
+            const activeVehicle = vehicles[currentVehicleId];
+            const maxDbz = document.getElementById('maxDbz').innerText;
+            const maxVelocity = document.getElementById('maxVelocity').innerText;
+            const radarMode = document.getElementById('radarMode').value;
+            const stormIntensity = document.getElementById('stormIntensity').value;
+            const isTornado = tornadoSimulation ? "偵測到極地強烈中尺度氣旋，雷達呈現經典 Hook Echo 釣鉤回波與大氣不穩定結構" : "一般強對流天氣，雷達刻正追蹤超大胞發展趨勢";
+
+            const systemPrompt = `你是一位服役於美國強烈風暴實驗室（NSSL）的資深戰地多普勒雷達指揮官與氣象學家。
+請用專業、生動、刺激、像在電影《龍捲風暴》第一線的口氣，針對使用者給予的雷達參數進行「戰地雷達診斷報告」。
+你的報告應包含：
+1. 戰地雷達回波實時解析 (分析當前 dBZ、風速是否處於危險警戒)
+2. 基於車款硬體特色（如：DOW 升降桅桿、相控陣快速掃描等）的戰術部署建議。
+3. 現場追風車隊避險指數。
+請使用繁體中文撰寫，字數控制在 250 字內，展現極客戰術美學。`;
+
+            const userPrompt = `【當前雷達戰場數據】
+- 觀測車型: ${activeVehicle.name} (${activeVehicle.era})
+- 硬體配置: 天線: ${activeVehicle.antenna}, 底盤: ${activeVehicle.chassis}, 頻段: ${activeVehicle.band}
+- 當前最大反射率 (Max dBZ): ${maxDbz}
+- 最大旋轉風速 (Max Velocity): ${maxVelocity}
+- 掃描模式: ${radarMode} (強度調校: ${stormIntensity}/10)
+- 氣旋威脅程度: ${isTornado}`;
+
+            try {
+                const result = await callGemini(userPrompt, systemPrompt);
+                setAiLoading(false);
+                showAiContent(result);
+            } catch (err) {
+                console.error("Gemini API Error:", err);
+                setAiLoading(false);
+                if (err.message === "NO_API_KEY") {
+                    document.getElementById('apiKeyPanel').classList.remove('hidden');
+                    showAiContent("⚠️ 尚未設定 Gemini API Key，AI 功能無法使用。\n\n請點擊上方「⚙ 設定金鑰」貼上您自己的金鑰（僅存於本機瀏覽器）。", true);
+                } else {
+                    showAiContent("⚠️ 數據連線中斷：戰地通信終端無法聯繫 Gemini 大腦，請確認網路或稍後重試。\n\n[系統回報錯誤: 指數退避重試5次失敗。]", true);
+                }
+            }
+        }
+
+        async function sendCustomQuery() {
+            const query = document.getElementById('aiInput').value.trim();
+            if (!query) {
+                document.getElementById('aiInput').value = "DOW 雷達車的雙偏振技術（Dual-Pol）在偵測冰雹和雨滴時有什麼具體優勢？";
+                return;
+            }
+
+            setAiLoading(true);
+            playPingSound(700);
+
+            const activeVehicle = vehicles[currentVehicleId];
+            const systemPrompt = `你是一位世界頂尖的移動雷達車（DOW）與氣象觀測科學家。請以嚴謹但生動的語氣，回答使用者關於 DOW 雷達、氣象學、龍捲風或暴風雨探測的戰術技術問題。請使用繁體中文，字數在 300 字內。目前追風車隊裝備的主力車型為：${activeVehicle.name}。`;
+
+            try {
+                const result = await callGemini(query, systemPrompt);
+                setAiLoading(false);
+                showAiContent(result);
+            } catch (err) {
+                console.error("Gemini API Error:", err);
+                setAiLoading(false);
+                if (err.message === "NO_API_KEY") {
+                    document.getElementById('apiKeyPanel').classList.remove('hidden');
+                    showAiContent("⚠️ 尚未設定 Gemini API Key，AI 功能無法使用。\n\n請點擊上方「⚙ 設定金鑰」貼上您自己的金鑰（僅存於本機瀏覽器）。", true);
+                } else {
+                    showAiContent("⚠️ 戰術中繼站異常：無法從 Gemini 解析解答。請稍後重新啟動通信系統。", true);
+                }
+            }
+        }
+
+        // ==========================================
+        // 8. ✨ DOW 雷達車 3D 結構互動模型 (Three.js)
+        // ==========================================
+        const dowParts = [
+            { key: 'generator', name: '發電機', desc: '為整套雷達系統、電腦與空調提供獨立電力，讓雷達車能在沒有外部電源的荒野現場長時間運作。' },
+            { key: 'computer', name: '電腦機櫃', desc: '內含訊號處理器與資料記錄系統，負責即時運算回波與徑向速度資料，是整套系統的「大腦」。' },
+            { key: 'ac', name: '機櫃空調', desc: '精密電子設備在高溫環境下容易過熱當機，這組空調確保機櫃內溫度穩定，特別是在炎熱的追風現場。' },
+            { key: 'balance', name: '負重平衡', desc: '用來平衡天線與桅桿的重量，避免車輛在崎嶇或傾斜地形上因重心偏移而傾覆。' },
+            { key: 'antenna', name: '天線', desc: '拋物線天線負責發射與接收微波訊號，是整套雷達系統最核心的部件，尺寸與形狀決定了波束的解析度。' },
+            { key: 'feedarm', name: '支架（饋源臂）', desc: '支撐並固定導波管(饋源)在天線正前方的精確焦點位置上，確保訊號能準確聚焦。' },
+            { key: 'direction', name: '觀測方向', desc: '表示天線目前波束指向的方向，操作員可即時調整方位角與仰角，追蹤目標風暴的位置。' },
+            { key: 'waveguide', name: '導波管（中央）', desc: '微波訊號由此處發射出去，經拋物面反射聚焦成窄波束；接收時則反過來把回波訊號送回機櫃處理。' },
+            { key: 'base', name: '基座', desc: '連接天線雲台與卡車底盤的結構，內含旋轉與俯仰馬達，讓天線能精確轉動掃描。' },
+            { key: 'leg', name: '支架（穩定腿）', desc: '觀測時伸出的液壓穩定腿，讓整輛卡車在掃描時保持絕對水平，避免震動干擾測量精度。' }
+        ];
+
+        let model3dRenderer, model3dScene, model3dCamera, model3dControls;
+        let model3dInited = false;        // 是否已建立場景（延後初始化用）
+        let model3dRunning = false;       // 渲染迴圈是否運轉中
+        let startModel3DLoop = null;
+        let stopModel3DLoop = null;
+        let model3dHotspots = [];
+        let model3dRaycaster, model3dMouse;
+        let model3dHoveredSprite = null;
+
+        function makeHotspotTexture() {
+            const c = document.createElement('canvas');
+            c.width = 64; c.height = 64;
+            const cx = c.getContext('2d');
+            const grad = cx.createRadialGradient(32, 32, 4, 32, 32, 30);
+            grad.addColorStop(0, 'rgba(16,185,129,1)');
+            grad.addColorStop(0.5, 'rgba(16,185,129,0.5)');
+            grad.addColorStop(1, 'rgba(16,185,129,0)');
+            cx.fillStyle = grad;
+            cx.beginPath(); cx.arc(32, 32, 30, 0, Math.PI * 2); cx.fill();
+            cx.fillStyle = '#fff';
+            cx.beginPath(); cx.arc(32, 32, 6, 0, Math.PI * 2); cx.fill();
+            return new THREE.CanvasTexture(c);
+        }
+
+        function addHotspot(key, x, y, z) {
+            const partDef = dowParts.find(p => p.key === key);
+            const tex = makeHotspotTexture();
+            const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false, sizeAttenuation: true });
+            const sprite = new THREE.Sprite(mat);
+            sprite.position.set(x, y, z);
+            sprite.scale.set(0.35, 0.35, 0.35);
+            sprite.userData = partDef;
+            model3dScene.add(sprite);
+            model3dHotspots.push(sprite);
+        }
+
+        // 建立通用示意性的 DOW 雷達車幾何模型 (對應結構剖析圖的 10 個標籤部件)
+        function buildDowTruckModel() {
+            const group = new THREE.Group();
+
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0xd6dde3, metalness: 0.3, roughness: 0.6 });
+            const darkMat = new THREE.MeshStandardMaterial({ color: 0x44494f, metalness: 0.4, roughness: 0.5 });
+            const windowMat = new THREE.MeshStandardMaterial({ color: 0x8fbce6, metalness: 0.1, roughness: 0.2 });
+            const greenMat = new THREE.MeshStandardMaterial({ color: 0x3f8f6f, metalness: 0.2, roughness: 0.6 });
+            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.8 });
+            const dishMat = new THREE.MeshStandardMaterial({ color: 0xf1f3f5, metalness: 0.2, roughness: 0.35, side: THREE.DoubleSide });
+
+            // --- 駕駛艙 ---
+            const cab = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.6, 1.7), bodyMat);
+            cab.position.set(-3.2, 1.55, 0);
+            group.add(cab);
+            const cabRoof = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 1.7, 16, 1, false, Math.PI, Math.PI), bodyMat);
+            cabRoof.rotation.x = Math.PI / 2;
+            cabRoof.position.set(-3.2, 2.35, 0);
+            group.add(cabRoof);
+            const windowMesh = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.7, 0.9), windowMat);
+            windowMesh.position.set(-2.42, 1.75, 0);
+            group.add(windowMesh);
+
+            // --- 底盤平台 ---
+            const bed = new THREE.Mesh(new THREE.BoxGeometry(6.2, 0.25, 2.0), darkMat);
+            bed.position.set(0.5, 1.0, 0);
+            group.add(bed);
+
+            // --- 輪子 ---
+            function addWheelPair(x) {
+                [-1, 1].forEach(side => {
+                    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.4, 20), wheelMat);
+                    wheel.rotation.x = Math.PI / 2;
+                    wheel.position.set(x, 0.5, side * 1.15);
+                    group.add(wheel);
+                });
+            }
+            addWheelPair(-3.0);
+            addWheelPair(-1.6);
+            addWheelPair(1.6);
+            addWheelPair(2.8);
+
+            // --- 發電機 ---
+            const generator = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.6, 1.3), greenMat);
+            generator.position.set(-1.9, 1.42, 0);
+            group.add(generator);
+            addHotspot('generator', -1.9, 1.75, 0.7);
+
+            // --- 電腦機櫃 ---
+            const computerCab = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.4, 1.3), bodyMat);
+            computerCab.position.set(-0.8, 1.82, 0);
+            group.add(computerCab);
+            addHotspot('computer', -0.8, 2.55, 0.7);
+
+            // --- 機櫃空調 ---
+            const acBody = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.6), darkMat);
+            acBody.position.set(-1.9, 0.85, 0.55);
+            group.add(acBody);
+            const acFan = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.08, 16), new THREE.MeshStandardMaterial({ color: 0x2b2f33 }));
+            acFan.rotation.x = Math.PI / 2;
+            acFan.position.set(-1.9, 0.85, 0.9);
+            group.add(acFan);
+            addHotspot('ac', -1.9, 0.85, 1.1);
+
+            // --- 負重平衡 ---
+            const balance = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 1.6), darkMat);
+            balance.position.set(0.5, 1.28, 0);
+            group.add(balance);
+            addHotspot('balance', 0.5, 1.5, 0.9);
+
+            // --- 基座 (旋轉雲台支柱) ---
+            const base = new THREE.Mesh(new THREE.BoxGeometry(0.55, 1.3, 0.55), darkMat);
+            base.position.set(2.0, 1.78, 0);
+            group.add(base);
+            addHotspot('base', 2.0, 1.5, 0.4);
+
+            // --- 拋物線天線 (LatheGeometry 旋轉成形)：移到基座正前方，緊鄰基座 ---
+            const dishPoints = [];
+            for (let i = 0; i <= 12; i++) {
+                const r = i / 12 * 1.3;
+                dishPoints.push(new THREE.Vector2(r, r * r * 0.42));
+            }
+            const dishGeo = new THREE.LatheGeometry(dishPoints, 32);
+            const dish = new THREE.Mesh(dishGeo, dishMat);
+            // 注意：rotation.z 必須是負的，正的話天線凹面會朝向卡車本體(背對觀測方向)，方向就反了
+            dish.rotation.z = -Math.PI / 2;
+            dish.position.set(2.85, 2.55, 0);
+            group.add(dish);
+            addHotspot('antenna', 3.1, 3.5, 0);
+
+            // --- 饋源支撐臂：從天線邊緣連到前方饋源點 (天線凹面深度約0.71，饋源在凹面內、接近邊緣處) ---
+            const feedArm = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.18, 0.18), darkMat);
+            feedArm.position.set(3.2, 2.78, 0);
+            feedArm.rotation.z = 0.32;
+            group.add(feedArm);
+            addHotspot('feedarm', 3.3, 3.05, 0);
+
+            // --- 導波管 (中央饋源)：位於天線凹面前方的焦點位置 ---
+            const waveguide = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.5, 12), darkMat);
+            waveguide.rotation.z = Math.PI / 2;
+            waveguide.position.set(3.45, 2.55, 0);
+            group.add(waveguide);
+            addHotspot('waveguide', 3.45, 2.25, 0);
+
+            // --- 饋源支撐細桿 ---
+            [-1, 1].forEach(s => {
+                const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.5, 8), darkMat);
+                strut.position.set(3.45, 2.55 + s * 0.4, s * 0.0);
+                strut.rotation.z = s * 0.55;
+                group.add(strut);
+            });
+
+            // --- 觀測方向箭頭：從天線開口前方指向外(跟天線凹面朝向一致) ---
+            const arrowDir = new THREE.Vector3(1, 0, 0);
+            const arrowOrigin = new THREE.Vector3(3.9, 2.55, 0);
+            const arrowHelper = new THREE.ArrowHelper(arrowDir, arrowOrigin, 1.4, 0x60a5fa, 0.3, 0.18);
+            group.add(arrowHelper);
+            addHotspot('direction', 5.0, 2.55, 0);
+
+            // --- 穩定支腿 (四個液壓腿) ---
+            const legPositions = [[-2.6, -0.9], [-2.6, 0.9], [2.6, -0.9], [2.6, 0.9]];
+            legPositions.forEach(([lx, lz]) => {
+                const leg = new THREE.Mesh(new THREE.BoxGeometry(0.18, 1.0, 0.18), darkMat);
+                leg.position.set(lx, 0.4, lz);
+                group.add(leg);
+                const foot = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.08, 0.32), darkMat);
+                foot.position.set(lx, -0.1, lz);
+                group.add(foot);
+            });
+            addHotspot('leg', 2.6, 0.4, 1.3);
+
+            return group;
+        }
+
+        function showPartInfo(part) {
+            document.getElementById('partInfoTitle').innerText = part.name;
+            document.getElementById('partInfoDesc').innerText = part.desc;
+        }
+
+        function initModel3D() {
+            const container = document.getElementById('model3dCanvasWrap');
+            if (!container || typeof THREE === 'undefined') return;
+            if (model3dInited) return; // 已初始化過就不重複建立
+            model3dInited = true;
+
+            model3dScene = new THREE.Scene();
+            model3dScene.background = new THREE.Color(0x020617);
+
+            const w = container.clientWidth || 400, h = container.clientHeight || 400;
+            model3dCamera = new THREE.PerspectiveCamera(45, w / h, 0.1, 100);
+            model3dCamera.position.set(7, 5, 7);
+
+            model3dRenderer = new THREE.WebGLRenderer({ antialias: true });
+            model3dRenderer.setSize(w, h);
+            model3dRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(model3dRenderer.domElement);
+
+            model3dControls = new THREE.OrbitControls(model3dCamera, model3dRenderer.domElement);
+            model3dControls.target.set(0.5, 1.6, 0);
+            model3dControls.enableDamping = true;
+            model3dControls.dampingFactor = 0.08;
+            model3dControls.minDistance = 3;
+            model3dControls.maxDistance = 20;
+            model3dControls.update();
+
+            const hemiLight = new THREE.HemisphereLight(0xbfdfff, 0x223344, 1.0);
+            model3dScene.add(hemiLight);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.1);
+            dirLight.position.set(6, 10, 4);
+            model3dScene.add(dirLight);
+            const fillLight = new THREE.DirectionalLight(0x10b981, 0.25);
+            fillLight.position.set(-5, 3, -5);
+            model3dScene.add(fillLight);
+
+            const grid = new THREE.GridHelper(20, 20, 0x10b981, 0x1e293b);
+            model3dScene.add(grid);
+
+            const truck = buildDowTruckModel();
+            model3dScene.add(truck);
+
+            // 零件快速清單 (側邊面板)
+            const listEl = document.getElementById('partsQuickList');
+            if (listEl) {
+                listEl.innerHTML = '';
+                dowParts.forEach(p => {
+                    const btn = document.createElement('button');
+                    btn.className = "px-2 py-1 bg-slate-900 border border-slate-800 hover:border-emerald-500/50 rounded text-[10px] text-slate-300 hover:text-emerald-400 transition-all";
+                    btn.innerText = p.name;
+                    btn.onclick = () => { showPartInfo(p); playPingSound(750); };
+                    listEl.appendChild(btn);
+                });
+            }
+
+            model3dRaycaster = new THREE.Raycaster();
+            model3dMouse = new THREE.Vector2();
+            const tooltip = document.getElementById('model3dTooltip');
+
+            function onPointerMove(e) {
+                const rect = model3dRenderer.domElement.getBoundingClientRect();
+                model3dMouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                model3dMouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+                model3dRaycaster.setFromCamera(model3dMouse, model3dCamera);
+                const hits = model3dRaycaster.intersectObjects(model3dHotspots);
+
+                if (hits.length > 0) {
+                    const sprite = hits[0].object;
+                    if (model3dHoveredSprite !== sprite) {
+                        if (model3dHoveredSprite) model3dHoveredSprite.scale.set(0.35, 0.35, 0.35);
+                        model3dHoveredSprite = sprite;
+                        sprite.scale.set(0.5, 0.5, 0.5);
+                    }
+                    tooltip.innerText = sprite.userData.name;
+                    tooltip.style.left = (e.clientX - rect.left + 14) + 'px';
+                    tooltip.style.top = (e.clientY - rect.top - 10) + 'px';
+                    tooltip.classList.remove('hidden');
+                    container.style.cursor = 'pointer';
+                } else {
+                    if (model3dHoveredSprite) {
+                        model3dHoveredSprite.scale.set(0.35, 0.35, 0.35);
+                        model3dHoveredSprite = null;
+                    }
+                    tooltip.classList.add('hidden');
+                    container.style.cursor = 'grab';
+                }
+            }
+
+            function onClick(e) {
+                const rect = model3dRenderer.domElement.getBoundingClientRect();
+                model3dMouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                model3dMouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+                model3dRaycaster.setFromCamera(model3dMouse, model3dCamera);
+                const hits = model3dRaycaster.intersectObjects(model3dHotspots);
+                if (hits.length > 0) {
+                    showPartInfo(hits[0].object.userData);
+                    playPingSound(750);
+                }
+            }
+
+            model3dRenderer.domElement.addEventListener('mousemove', onPointerMove);
+            model3dRenderer.domElement.addEventListener('click', onClick);
+
+            window.addEventListener('resize', () => {
+                const nw = container.clientWidth, nh = container.clientHeight;
+                if (!nw || !nh) return;
+                model3dCamera.aspect = nw / nh;
+                model3dCamera.updateProjectionMatrix();
+                model3dRenderer.setSize(nw, nh);
+            });
+
+            function animateModel3D() {
+                if (!model3dRunning) return; // 暫停時直接中止迴圈，不再排下一幀
+                requestAnimationFrame(animateModel3D);
+                model3dControls.update();
+                model3dRenderer.render(model3dScene, model3dCamera);
+            }
+            startModel3DLoop = function () {
+                if (model3dRunning) return;
+                model3dRunning = true;
+                requestAnimationFrame(animateModel3D);
+            };
+            stopModel3DLoop = function () {
+                model3dRunning = false;
+            };
+            startModel3DLoop();
+        }
+
+        // 7. 頁面加載
+        window.onload = function() {
+            selectVehicle(3);
+            updateApiKeyStatus();
+
+            // 效能優化：雷達畫面只在「雷達控制台」進入視窗時才運轉，捲出視窗即暫停動畫迴圈，
+            // 避免在使用者看不到的情況下持續吃 CPU 與電量。
+            const radarStage = document.getElementById('radar-stage');
+            let radarInView = false;
+            if ('IntersectionObserver' in window && radarStage) {
+                new IntersectionObserver((entries) => {
+                    radarInView = entries[0].isIntersecting;
+                    if (radarInView && !document.hidden) startRadarLoop();
+                    else stopRadarLoop();
+                }, { threshold: 0.01 }).observe(radarStage);
+            } else {
+                radarInView = true;
+                startRadarLoop();
+            }
+
+            // 效能優化：Three.js 3D 模型延後到使用者捲動到該區塊時才建立與渲染，
+            // 大幅降低首屏載入成本與記憶體佔用；離開視窗時暫停渲染迴圈。
+            const model3dSection = document.getElementById('model3d-section');
+            if ('IntersectionObserver' in window && model3dSection) {
+                new IntersectionObserver((entries) => {
+                    if (entries[0].isIntersecting) {
+                        initModel3D();
+                        if (typeof startModel3DLoop === 'function' && !document.hidden) startModel3DLoop();
+                    } else if (typeof stopModel3DLoop === 'function') {
+                        stopModel3DLoop();
+                    }
+                }, { threshold: 0.01 }).observe(model3dSection);
+            } else {
+                initModel3D();
+            }
+
+            // 分頁切到背景時暫停所有動畫，切回前景且內容仍在視窗內時自動恢復。
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    stopRadarLoop();
+                    if (typeof stopModel3DLoop === 'function') stopModel3DLoop();
+                } else {
+                    if (radarInView) startRadarLoop();
+                    if (model3dInited && typeof startModel3DLoop === 'function') startModel3DLoop();
+                }
+            });
+        }
+    </script>
+</body>
+</html>
