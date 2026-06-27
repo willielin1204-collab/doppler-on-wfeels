@@ -38,6 +38,8 @@
     <!-- Three.js 3D 引擎與滑鼠軌道控制器（defer：延後到 HTML 解析完成後才執行，不阻塞首屏） -->
     <script defer src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
     <script defer src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- 標記 JS 已啟用：捲動進場動畫僅在有 JS 時先隱藏內容，確保無 JS 環境仍可讀到全部內容 -->
+    <script>document.documentElement.classList.add('js');</script>
     <style>
         @keyframes radar-pulse {
             0% { transform: scale(0.95); opacity: 0.5; }
@@ -68,8 +70,42 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #4B5563;
         }
+        /* === 首頁照片背景：緩慢推近 (Ken Burns) 帶來電影沉浸感 === */
+        @keyframes hero-zoom {
+            0%   { transform: scale(1.06); }
+            100% { transform: scale(1.18); }
+        }
+        .hero-photo {
+            background-image: url('assets/hero-dow8.jpg');
+            background-size: cover;
+            background-position: center 38%;
+            transform: scale(1.06);
+            animation: hero-zoom 28s ease-out forwards;
+        }
+        /* 多層漸層遮罩：頂部壓暗利於頂部標籤、中央透出照片、底部融入頁面深色背景（即你要的「漸層感」） */
+        .hero-scrim {
+            background:
+                linear-gradient(to bottom, rgba(2,6,23,0.80) 0%, rgba(2,6,23,0.28) 32%, rgba(2,6,23,0.42) 60%, rgba(2,6,23,0.97) 100%),
+                radial-gradient(ellipse at 50% 42%, rgba(2,6,23,0) 30%, rgba(2,6,23,0.55) 100%);
+        }
+        /* 首頁文字加上陰影，確保壓在亮空照片上仍清晰可讀 */
+        .hero-readable {
+            text-shadow: 0 2px 14px rgba(0,0,0,0.75), 0 1px 3px rgba(0,0,0,0.6);
+        }
+        /* === 捲動進場：區塊滑入視窗時淡入上移（只有 JS 時才預先隱藏，無 JS 也能讀到內容） === */
+        .js .reveal {
+            opacity: 0;
+            transform: translateY(28px);
+            transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+            will-change: opacity, transform;
+        }
+        .js .reveal.is-visible {
+            opacity: 1;
+            transform: none;
+        }
         /* 尊重使用者的「減少動態」系統偏好，降低暈眩與電量消耗 */
         @media (prefers-reduced-motion: reduce) {
+            .js .reveal { opacity: 1 !important; transform: none !important; }
             *, *::before, *::after {
                 animation-duration: 0.001ms !important;
                 animation-iteration-count: 1 !important;
@@ -82,7 +118,11 @@
 <body class="bg-slate-950 text-slate-100 min-h-screen font-sans flex flex-col justify-between">
 
     <!-- 🎬 Discovery 級電影感沉浸式風暴敘事首頁 -->
-    <section class="min-h-screen relative flex flex-col items-center justify-between text-center p-6 bg-[radial-gradient(ellipse_at_center,#0f172a_0%,#000000_70%)] overflow-hidden border-b border-slate-800">
+    <section class="min-h-screen relative flex flex-col items-center justify-between text-center p-6 bg-slate-950 overflow-hidden border-b border-slate-800">
+        <!-- 真實 DOW 8 暴風追擊照片背景（緩慢推近的電影運鏡） -->
+        <div class="hero-photo absolute inset-0 pointer-events-none"></div>
+        <!-- 多層漸層遮罩：壓暗以利閱讀，底部漸漸融入頁面深色背景 -->
+        <div class="hero-scrim absolute inset-0 pointer-events-none"></div>
         <!-- 閃電背景效果 -->
         <div class="absolute inset-0 bg-indigo-900/10 pointer-events-none lightning-bg"></div>
         <!-- 碳纖維暗色網格裝飾 -->
@@ -96,7 +136,7 @@
         </div>
 
         <!-- 敘事核心 -->
-        <div class="max-w-4xl z-10 space-y-6 px-4">
+        <div class="max-w-4xl z-10 space-y-6 px-4 hero-readable">
             <p class="text-xs md:text-sm font-mono tracking-widest text-emerald-400 uppercase">DISCOVERY CHANNEL SPECIAL PRESENTATION</p>
             <h1 class="text-5xl md:text-8xl font-black tracking-tight text-white italic uppercase">
                 風暴獵手的 <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-amber-500 to-red-600">怪獸卡車</span>
@@ -149,7 +189,7 @@
     <main class="flex-grow max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
         
         <!-- 左側：多普勒雷達即時模擬控制台 (7/12) -->
-        <section class="lg:col-span-7 flex flex-col gap-6">
+        <section class="reveal lg:col-span-7 flex flex-col gap-6">
             
             <!-- 雷達顯示螢幕 -->
             <div id="radar-stage" class="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col items-center justify-center relative overflow-hidden shadow-2xl">
@@ -254,7 +294,7 @@
         </section>
 
         <!-- 右側：DOW 家族進化史 & ✨ Gemini AI 協同官 (5/12) -->
-        <section class="lg:col-span-5 flex flex-col gap-6">
+        <section class="reveal lg:col-span-5 flex flex-col gap-6" style="transition-delay: .12s;">
             
             <!-- 車輛詳細展示面板 -->
             <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between shadow-2xl">
@@ -402,7 +442,7 @@
     </main>
 
     <!-- ✨ 全新獨立區塊：DOW 雷達車 3D 結構互動模型 -->
-    <section id="model3d-section" class="max-w-7xl w-full mx-auto p-4 mt-4">
+    <section id="model3d-section" class="reveal max-w-7xl w-full mx-auto p-4 mt-4">
         <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-2xl">
             <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-4 border-b border-slate-800 pb-3">
                 <div>
@@ -1754,6 +1794,22 @@
                     if (model3dInited && typeof startModel3DLoop === 'function') startModel3DLoop();
                 }
             });
+
+            // 捲動進場動畫：區塊滑入視窗即淡入上移，只觸發一次後即停止觀察。
+            const revealEls = document.querySelectorAll('.reveal');
+            if ('IntersectionObserver' in window && revealEls.length) {
+                const revealObserver = new IntersectionObserver((entries, obs) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('is-visible');
+                            obs.unobserve(entry.target);
+                        }
+                    });
+                }, { threshold: 0.12 });
+                revealEls.forEach(el => revealObserver.observe(el));
+            } else {
+                revealEls.forEach(el => el.classList.add('is-visible'));
+            }
         }
     </script>
 </body>
