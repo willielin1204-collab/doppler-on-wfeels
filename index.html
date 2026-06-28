@@ -547,6 +547,47 @@
         </div>
     </section>
 
+    <!-- ✨ P3：雷達系統訊號鏈方塊圖（電機亮點，可調參數互動） -->
+    <section id="signal-section" class="reveal max-w-7xl w-full mx-auto p-4 mt-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-2xl">
+            <div class="border-b border-slate-800 pb-3 mb-4">
+                <h2 class="text-xl font-black text-white flex items-center gap-2"><i class="fa-solid fa-microchip text-emerald-400"></i> 雷達系統訊號鏈：一個電波的完整旅程</h2>
+                <p class="text-xs text-slate-400 mt-1 leading-relaxed">點下方任一方塊，看該級的訊號波形如何變化。拉 PRF 與取樣率，親手體驗脈衝列與「混疊」——外差混頻、I/Q 解調、ADC 取樣定理，都是電機/訊號課程的核心，也是別的氣象網站不會有的角度。</p>
+            </div>
+            <!-- 方塊圖（由 JS 生成方塊與箭頭） -->
+            <div id="sigBlocks" class="flex flex-wrap items-center gap-1 mb-4"></div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div class="lg:col-span-2">
+                    <canvas id="sigCanvas" role="img" aria-label="目前選取訊號鏈節點的波形示意圖" width="600" height="220" class="w-full rounded bg-black border border-slate-800"></canvas>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+                        <div>
+                            <label for="sigPRF" class="block text-[10px] text-slate-400 mb-1 font-mono">PRF＝<span id="sigPRFval" class="text-emerald-400">1500</span> Hz</label>
+                            <input type="range" id="sigPRF" min="500" max="4000" step="100" value="1500" class="w-full accent-emerald-500 h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                        <div>
+                            <label for="sigFs" class="block text-[10px] text-slate-400 mb-1 font-mono">ADC 取樣率 fs＝<span id="sigFsval" class="text-emerald-400">20</span></label>
+                            <input type="range" id="sigFs" min="2" max="40" step="1" value="20" class="w-full accent-emerald-500 h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                        <div>
+                            <label for="sigF" class="block text-[10px] text-slate-400 mb-1 font-mono">訊號頻率 f＝<span id="sigFval" class="text-emerald-400">5</span></label>
+                            <input type="range" id="sigF" min="1" max="20" step="1" value="5" class="w-full accent-emerald-500 h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-slate-500 mt-1">PRF 影響「發射機」脈衝列密度；取樣率 fs 與訊號頻率 f 影響「ADC 取樣」是否混疊（fs &lt; 2f 即混疊）。</p>
+                </div>
+                <div class="bg-slate-950 border border-slate-800 rounded-lg p-4 flex flex-col">
+                    <span class="text-xs font-mono text-slate-500 uppercase">SIGNAL STAGE</span>
+                    <h3 id="sigTitle" class="text-lg font-bold text-emerald-400 mb-2 mt-1">發射機</h3>
+                    <p id="sigDesc" class="text-sm text-slate-300 leading-relaxed flex-grow"></p>
+                    <details class="mt-3">
+                        <summary class="text-[10px] text-emerald-400/80 cursor-pointer hover:text-emerald-300 select-none">📐 原理</summary>
+                        <p id="sigFormula" class="text-[10px] text-slate-400 font-mono mt-1 pl-3 border-l border-slate-700 leading-relaxed"></p>
+                    </details>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- 腳部宣告 -->
     <footer class="border-t border-slate-800 bg-slate-900 px-4 py-6 mt-8">
         <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-400">
@@ -2061,6 +2102,167 @@
             }
             document.getElementById('nyquistSlider').addEventListener('input', render);
             render();
+        })();
+
+        // ==========================================
+        // P3：雷達系統訊號鏈方塊圖（可調參數互動）
+        // ==========================================
+        ;(function () {
+            const cv = document.getElementById('sigCanvas');
+            if (!cv) return;
+            const g = cv.getContext('2d');
+            const CW = 600, CH = 220, MID = CH / 2, X0 = 50, X1 = CW - 12, W = X1 - X0;
+            let current = 'tx';
+
+            const BLOCKS = [
+                { key: 'tx', name: '發射機', icon: 'fa-bolt', draw: 'tx',
+                  desc: '振盪源（磁控管／速調管或固態元件）產生高功率微波脈衝，以固定的脈衝重複頻率（PRF）發射出去。',
+                  formula: '脈衝列：間隔 PRT = 1/PRF。占空比低、峰值功率極高。' },
+                { key: 'wg', name: '波導', icon: 'fa-grip-lines', draw: 'carrier',
+                  desc: '金屬波導以特定模態（如 TE10）把微波能量低損耗地從發射機送到天線。',
+                  formula: '載波 E(t) = A·cos(2π f_c t)，f_c 為射頻載波頻率。' },
+                { key: 'circ', name: '環行器/收發開關', icon: 'fa-arrows-spin', draw: 'circ',
+                  desc: '環行器（T-R 開關）讓同一支天線分時收發：發射時把功率導向天線、接收時把微弱回波導向接收機，並保護接收機不被大功率燒毀。',
+                  formula: '單向導通 Port1→2→3，提供收發隔離度。' },
+                { key: 'ant', name: '天線', icon: 'fa-satellite-dish', draw: 'beam',
+                  desc: '拋物面天線把能量聚成很窄的波束；口徑越大、波束越窄、角解析度越好。',
+                  formula: '波束寬 θ ≈ 1.22·λ/D（D 為口徑直徑）。' },
+                { key: 'echo', name: '回波', icon: 'fa-wave-square', draw: 'echo',
+                  desc: '電波打到雨滴或碎片後散射回來，能量衰減到極微弱（可達 −110 dBm），且混有雜訊。',
+                  formula: '雷達方程式：P_r ∝ P_t·G²·λ²·σ / R⁴。' },
+                { key: 'lna', name: '低雜訊放大器 LNA', icon: 'fa-up-right-and-down-left-from-center', draw: 'lna',
+                  desc: '接收的第一級放大，決定整體雜訊指數；在訊號還很弱時就放大，盡量不引入額外雜訊。',
+                  formula: '增益 G(dB)=10·log₁₀(P_out/P_in)；雜訊指數 NF 越低越好。' },
+                { key: 'mix', name: '混頻器', icon: 'fa-blender', draw: 'mixer',
+                  desc: '把射頻 RF 與本地振盪 LO 相乘，產生較低的中頻 IF，方便後級處理——這就是超外差接收。',
+                  formula: 'cos(ω_RF t)·cos(ω_LO t) → ½[cos((ω_RF−ω_LO)t)+cos((ω_RF+ω_LO)t)]，取差頻 IF。' },
+                { key: 'if', name: '中頻放大', icon: 'fa-sliders', draw: 'ifamp',
+                  desc: '在固定的中頻做主要的放大與帶通濾波，提供大部分增益與選擇性。',
+                  formula: 'f_IF = |f_RF − f_LO|，固定不隨 RF 變動。' },
+                { key: 'iq', name: 'I/Q 解調', icon: 'fa-square-root-variable', draw: 'iq',
+                  desc: '把訊號分成同相（I）與正交（Q）兩路、相差 90°，完整保留振幅與相位——這是多普勒測速的關鍵。',
+                  formula: 'I=A·cos φ、Q=A·sin φ；振幅 A=√(I²+Q²)、相位 φ=atan2(Q,I)。' },
+                { key: 'adc', name: 'ADC 取樣', icon: 'fa-chart-column', draw: 'adc',
+                  desc: '以取樣率 fs 把連續訊號取成離散數位樣本。fs 不足會發生「混疊」——這正是 P2 速度折疊的根源。',
+                  formula: '取樣定理：fs ≥ 2·f_max；否則混疊，與多普勒速度折疊同源。' },
+                { key: 'dsp', name: '訊號處理', icon: 'fa-microchip', draw: 'dsp',
+                  desc: '用脈衝對／FFT 估出功率譜，導出反射率 Z、徑向速度 V、譜寬 W，再進一步算雙偏振 ZDR/CC/KDP。',
+                  formula: 'Z←回波功率、V←相位變化率(多普勒)、W←譜寬。' }
+            ];
+
+            function P() {
+                return {
+                    prf: +document.getElementById('sigPRF').value,
+                    fs: +document.getElementById('sigFs').value,
+                    f: +document.getElementById('sigF').value
+                };
+            }
+            function clearBg() { g.fillStyle = '#080d1a'; g.fillRect(0, 0, CW, CH); }
+            function axis() { g.strokeStyle = 'rgba(255,255,255,0.12)'; g.lineWidth = 1; g.beginPath(); g.moveTo(X0, MID); g.lineTo(X1, MID); g.stroke(); }
+            function note(t, x, y, color) { g.fillStyle = color || 'rgba(255,255,255,0.7)'; g.font = '11px monospace'; g.fillText(t, x, y); }
+            function sine(cycles, amp, color, phase) {
+                g.strokeStyle = color; g.lineWidth = 2; g.beginPath();
+                for (let i = 0; i <= W; i++) {
+                    const x = X0 + i, y = MID - amp * Math.sin(2 * Math.PI * cycles * i / W + (phase || 0));
+                    i === 0 ? g.moveTo(x, y) : g.lineTo(x, y);
+                }
+                g.stroke();
+            }
+
+            function drawTx() {
+                clearBg(); axis(); const { prf } = P();
+                const n = Math.max(2, Math.round(prf / 300)), sp = W / n;
+                g.strokeStyle = '#10b981'; g.lineWidth = 2; g.beginPath(); g.moveTo(X0, MID);
+                for (let i = 0; i < n; i++) { const px = X0 + i * sp + sp * 0.15, w = sp * 0.2; g.lineTo(px, MID); g.lineTo(px, MID - 70); g.lineTo(px + w, MID - 70); g.lineTo(px + w, MID); }
+                g.lineTo(X1, MID); g.stroke();
+                note('脈衝列　PRT = 1/PRF　(' + prf + ' Hz)', X0, 24, '#34d399'); note('時間 →', X1 - 48, MID + 18);
+            }
+            function drawCarrier() { clearBg(); axis(); sine(18, 60, '#10b981'); note('射頻載波 f_c（連續正弦波）', X0, 24, '#34d399'); }
+            function drawCirc() {
+                clearBg(); const cx = CW / 2, cy = MID, R = 52;
+                g.strokeStyle = '#10b981'; g.lineWidth = 2; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke();
+                g.beginPath(); g.arc(cx, cy, R - 14, -0.4, 4.0); g.stroke();
+                const ah = R - 14; g.beginPath(); g.moveTo(cx + ah * Math.cos(4.0), cy + ah * Math.sin(4.0)); g.lineTo(cx + ah * Math.cos(4.0) - 6, cy + ah * Math.sin(4.0) - 2); g.lineTo(cx + ah * Math.cos(4.0) + 2, cy + ah * Math.sin(4.0) - 8); g.fillStyle = '#10b981'; g.fill();
+                note('發射機 →', cx - R - 76, cy + 4, '#94a3b8'); note('→ 天線', cx + R + 12, cy - 28, '#94a3b8'); note('→ 接收機', cx + R + 12, cy + 36, '#94a3b8');
+                note('單向導通：發射→天線、天線回波→接收機（隔離保護）', X0, 200, '#64748b');
+            }
+            function drawBeam() {
+                clearBg(); const ox = X0 + 6, oy = MID;
+                g.fillStyle = 'rgba(16,185,129,0.18)'; g.strokeStyle = 'rgba(16,185,129,0.85)'; g.lineWidth = 2;
+                g.beginPath(); g.moveTo(ox, oy); g.lineTo(X1, oy - 14); g.lineTo(X1, oy + 14); g.closePath(); g.fill(); g.stroke();
+                g.strokeStyle = '#94a3b8'; g.beginPath(); g.arc(ox - 4, oy, 18, -1.2, 1.2); g.stroke();
+                note('窄波束　θ ≈ 1.22 λ/D（口徑越大越窄）', X0 + 30, 24, '#34d399');
+            }
+            function drawEcho() {
+                clearBg(); axis(); g.strokeStyle = 'rgba(56,130,246,0.9)'; g.lineWidth = 1.5; g.beginPath();
+                for (let i = 0; i <= W; i++) { const x = X0 + i, y = MID - (8 * Math.sin(2 * Math.PI * 10 * i / W) + (Math.random() - 0.5) * 10); i === 0 ? g.moveTo(x, y) : g.lineTo(x, y); }
+                g.stroke(); note('回波：極微弱且混有雜訊（可達 −110 dBm）', X0, 24, '#60a5fa');
+            }
+            function drawLna() {
+                clearBg(); axis(); g.strokeStyle = 'rgba(52,211,153,0.95)'; g.lineWidth = 2; g.beginPath();
+                for (let i = 0; i <= W; i++) { const x = X0 + i, y = MID - (55 * Math.sin(2 * Math.PI * 10 * i / W) + (Math.random() - 0.5) * 8); i === 0 ? g.moveTo(x, y) : g.lineTo(x, y); }
+                g.stroke(); note('LNA 放大後：同一訊號、振幅大增', X0, 24, '#34d399');
+            }
+            function drawMixer() {
+                clearBg(); g.strokeStyle = 'rgba(255,255,255,0.12)'; g.beginPath(); g.moveTo(X0, CH - 30); g.lineTo(X1, CH - 30); g.stroke();
+                const peak = (x, h, label, color) => { g.strokeStyle = color; g.lineWidth = 3; g.beginPath(); g.moveTo(x, CH - 30); g.lineTo(x, CH - 30 - h); g.stroke(); g.fillStyle = color; g.font = '10px monospace'; g.fillText(label, x - 16, CH - 30 - h - 6); };
+                peak(X0 + 50, 120, 'IF 差頻', '#10b981'); peak(X0 + 320, 90, 'LO', '#f59e0b'); peak(X0 + 390, 90, 'RF', '#60a5fa'); peak(X0 + 470, 55, '和頻(濾掉)', '#64748b');
+                note('混頻：RF × LO → 取低的差頻 IF（超外差）', X0, 24, '#34d399'); note('頻率 →', X1 - 48, CH - 14);
+            }
+            function drawIfamp() { clearBg(); axis(); sine(7, 65, '#10b981'); note('中頻 IF：固定頻率，主要增益與帶通濾波', X0, 24, '#34d399'); }
+            function drawIq() {
+                clearBg(); axis(); sine(5, 45, '#10b981', 0); sine(5, 45, '#f59e0b', Math.PI / 2);
+                note('I（同相）', X0, 24, '#34d399'); note('Q（正交，差 90°）', X0 + 80, 24, '#f59e0b'); note('A=√(I²+Q²)、φ=atan2(Q,I)', X0, 200, '#64748b');
+            }
+            function drawAdc() {
+                clearBg(); axis(); const { fs, f } = P();
+                sine(f, 55, 'rgba(100,116,139,0.7)');
+                g.fillStyle = '#10b981';
+                for (let k = 0; k <= fs; k++) { const i = k * W / fs, x = X0 + i, y = MID - 55 * Math.sin(2 * Math.PI * f * i / W); g.beginPath(); g.arc(x, y, 3, 0, Math.PI * 2); g.fill(); }
+                if (fs < 2 * f) { const fa = Math.abs(f - fs * Math.round(f / fs)); sine(fa, 55, 'rgba(239,68,68,0.95)'); note('⚠ 混疊！表面頻率 fa=' + fa.toFixed(1) + '（紅線）', X0, 200, '#f87171'); }
+                else { note('取樣足夠：fs ≥ 2f，可完整還原', X0, 200, '#34d399'); }
+                note('真實 f=' + f + '、fs=' + fs + '（綠點為取樣）', X0, 24, '#34d399');
+            }
+            function drawDsp() {
+                clearBg(); g.strokeStyle = 'rgba(255,255,255,0.12)'; g.beginPath(); g.moveTo(X0, CH - 30); g.lineTo(X1, CH - 30); g.stroke();
+                const cxp = W * 0.42, sw = 55; g.strokeStyle = '#10b981'; g.lineWidth = 2; g.beginPath();
+                for (let i = 0; i <= W; i++) { const x = X0 + i, h = 130 * Math.exp(-Math.pow((i - cxp) / sw, 2)), y = CH - 30 - h; i === 0 ? g.moveTo(x, CH - 30) : g.lineTo(x, y); }
+                g.stroke();
+                note('功率譜（脈衝對／FFT）→ 導出氣象量', X0, 24, '#34d399');
+                note('面積 → Z（反射率）', X0, 110, '#94a3b8'); note('峰位 → V（多普勒速度）', X0, 130, '#94a3b8'); note('寬度 → W（譜寬）', X0, 150, '#94a3b8');
+            }
+
+            const DRAW = { tx: drawTx, carrier: drawCarrier, circ: drawCirc, beam: drawBeam, echo: drawEcho, lna: drawLna, mixer: drawMixer, ifamp: drawIfamp, iq: drawIq, adc: drawAdc, dsp: drawDsp };
+            const idleCls = 'px-2 py-1 bg-slate-950 border border-slate-800 hover:border-emerald-500/50 rounded text-[10px] font-mono text-slate-300 hover:text-emerald-400 transition-all whitespace-nowrap';
+            const activeCls = 'px-2 py-1 bg-emerald-900/30 border border-emerald-500 rounded text-[10px] font-mono text-emerald-400 transition-all whitespace-nowrap';
+
+            function render(key) {
+                current = key;
+                const b = BLOCKS.find(x => x.key === key) || BLOCKS[0];
+                document.getElementById('sigTitle').textContent = b.name;
+                document.getElementById('sigDesc').textContent = b.desc;
+                document.getElementById('sigFormula').textContent = b.formula;
+                BLOCKS.forEach(x => { const el = document.getElementById('sigBtn-' + x.key); if (el) el.className = (x.key === key ? activeCls : idleCls); });
+                (DRAW[b.draw] || drawTx)();
+            }
+
+            // 生成方塊與箭頭
+            const wrap = document.getElementById('sigBlocks');
+            BLOCKS.forEach((b, idx) => {
+                const btn = document.createElement('button');
+                btn.id = 'sigBtn-' + b.key; btn.className = idleCls;
+                btn.innerHTML = '<i class="fa-solid ' + b.icon + '"></i> ' + b.name;
+                btn.onclick = () => { render(b.key); if (typeof playPingSound === 'function') playPingSound(620 + idx * 30); };
+                wrap.appendChild(btn);
+                if (idx < BLOCKS.length - 1) { const ar = document.createElement('span'); ar.className = 'text-slate-600 text-xs'; ar.textContent = '→'; wrap.appendChild(ar); }
+            });
+            ['sigPRF', 'sigFs', 'sigF'].forEach(id => document.getElementById(id).addEventListener('input', () => {
+                document.getElementById('sigPRFval').textContent = document.getElementById('sigPRF').value;
+                document.getElementById('sigFsval').textContent = document.getElementById('sigFs').value;
+                document.getElementById('sigFval').textContent = document.getElementById('sigF').value;
+                (DRAW[(BLOCKS.find(b => b.key === current) || BLOCKS[0]).draw] || drawTx)();
+            }));
+            render('tx');
         })();
     </script>
 </body>
