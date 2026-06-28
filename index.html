@@ -38,6 +38,8 @@
     <!-- Three.js 3D 引擎與滑鼠軌道控制器（defer：延後到 HTML 解析完成後才執行，不阻塞首屏） -->
     <script defer src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
     <script defer src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- 標記 JS 已啟用：捲動進場動畫僅在有 JS 時先隱藏內容，確保無 JS 環境仍可讀到全部內容 -->
+    <script>document.documentElement.classList.add('js');</script>
     <style>
         @keyframes radar-pulse {
             0% { transform: scale(0.95); opacity: 0.5; }
@@ -68,8 +70,50 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #4B5563;
         }
+        /* === 首頁照片背景：緩慢推近 (Ken Burns) 帶來電影沉浸感 === */
+        @keyframes hero-zoom {
+            0%   { transform: scale(1.06); }
+            100% { transform: scale(1.18); }
+        }
+        .hero-photo {
+            /* 後備：不支援 image-set 的瀏覽器用 JPEG */
+            background-image: url('assets/hero-dow8.jpg');
+            /* 支援的瀏覽器優先載入較小的 WebP，否則自動退回 JPEG */
+            background-image: image-set(url('assets/hero-dow8.webp') type('image/webp'), url('assets/hero-dow8.jpg') type('image/jpeg'));
+            background-size: cover;
+            background-position: center 38%;
+            transform: scale(1.06);
+            animation: hero-zoom 28s ease-out forwards;
+        }
+        /* 多層漸層遮罩：頂部壓暗利於頂部標籤、中央透出照片、底部融入頁面深色背景（即你要的「漸層感」） */
+        .hero-scrim {
+            background:
+                linear-gradient(to bottom, rgba(2,6,23,0.80) 0%, rgba(2,6,23,0.28) 32%, rgba(2,6,23,0.42) 60%, rgba(2,6,23,0.97) 100%),
+                radial-gradient(ellipse at 50% 42%, rgba(2,6,23,0) 30%, rgba(2,6,23,0.55) 100%);
+        }
+        /* 首頁文字加上陰影，確保壓在亮空照片上仍清晰可讀 */
+        .hero-readable {
+            text-shadow: 0 2px 14px rgba(0,0,0,0.75), 0 1px 3px rgba(0,0,0,0.6);
+        }
+        /* === 捲動進場：區塊滑入視窗時淡入上移（只有 JS 時才預先隱藏，無 JS 也能讀到內容） === */
+        .js .reveal {
+            opacity: 0;
+            transform: translateY(28px);
+            transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+            will-change: opacity, transform;
+        }
+        .js .reveal.is-visible {
+            opacity: 1;
+            transform: none;
+        }
+        /* 錨點跳轉時預留 sticky 導覽列高度，避免標題被遮住 */
+        #radar-stage, #dealias-section, #model3d-section,
+        #signal-section, #dualdoppler-section, #deploy-section {
+            scroll-margin-top: 110px;
+        }
         /* 尊重使用者的「減少動態」系統偏好，降低暈眩與電量消耗 */
         @media (prefers-reduced-motion: reduce) {
+            .js .reveal { opacity: 1 !important; transform: none !important; }
             *, *::before, *::after {
                 animation-duration: 0.001ms !important;
                 animation-iteration-count: 1 !important;
@@ -82,7 +126,11 @@
 <body class="bg-slate-950 text-slate-100 min-h-screen font-sans flex flex-col justify-between">
 
     <!-- 🎬 Discovery 級電影感沉浸式風暴敘事首頁 -->
-    <section class="min-h-screen relative flex flex-col items-center justify-between text-center p-6 bg-[radial-gradient(ellipse_at_center,#0f172a_0%,#000000_70%)] overflow-hidden border-b border-slate-800">
+    <section class="min-h-screen relative flex flex-col items-center justify-between text-center p-6 bg-slate-950 overflow-hidden border-b border-slate-800">
+        <!-- 真實 DOW 8 暴風追擊照片背景（緩慢推近的電影運鏡） -->
+        <div class="hero-photo absolute inset-0 pointer-events-none"></div>
+        <!-- 多層漸層遮罩：壓暗以利閱讀，底部漸漸融入頁面深色背景 -->
+        <div class="hero-scrim absolute inset-0 pointer-events-none"></div>
         <!-- 閃電背景效果 -->
         <div class="absolute inset-0 bg-indigo-900/10 pointer-events-none lightning-bg"></div>
         <!-- 碳纖維暗色網格裝飾 -->
@@ -96,7 +144,7 @@
         </div>
 
         <!-- 敘事核心 -->
-        <div class="max-w-4xl z-10 space-y-6 px-4">
+        <div class="max-w-4xl z-10 space-y-6 px-4 hero-readable">
             <p class="text-xs md:text-sm font-mono tracking-widest text-emerald-400 uppercase">DISCOVERY CHANNEL SPECIAL PRESENTATION</p>
             <h1 class="text-5xl md:text-8xl font-black tracking-tight text-white italic uppercase">
                 風暴獵手的 <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-amber-500 to-red-600">怪獸卡車</span>
@@ -132,6 +180,9 @@
             </div>
             <!-- 控制按鈕組 -->
             <div class="flex items-center gap-2">
+                <button id="openTourBtn" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 border border-emerald-500 rounded-md text-xs flex items-center gap-2 text-slate-950 font-bold transition-all">
+                    <i class="fa-solid fa-compass"></i> 新手導覽
+                </button>
                 <a href="#model3d-section" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-md text-xs flex items-center gap-2 text-emerald-300 transition-all">
                     <i class="fa-solid fa-cube"></i> 3D 結構模型
                 </a>
@@ -145,11 +196,94 @@
         </div>
     </header>
 
+    <!-- 🧭 新手導覽彈窗（給完全外行的人：這個網站在講什麼？） -->
+    <div id="tourModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4 bg-black/80 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="tourTitle">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[88vh] flex flex-col">
+            <!-- 標題列 -->
+            <div class="flex items-center gap-3 border-b border-slate-800 p-5 shrink-0">
+                <div class="w-10 h-10 rounded-lg bg-emerald-600 flex items-center justify-center text-slate-950 shrink-0"><i class="fa-solid fa-compass text-xl"></i></div>
+                <div class="flex-grow">
+                    <h2 id="tourTitle" class="text-lg font-black text-white">新手導覽：這個網站在講什麼？</h2>
+                    <p class="text-xs text-slate-400">完全不懂雷達也沒關係，3 分鐘看懂這台追龍捲風的卡車</p>
+                </div>
+                <button id="closeTourBtn" aria-label="關閉導覽" class="w-9 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 flex items-center justify-center shrink-0 transition-all"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <!-- 內容（可捲動） -->
+            <div class="overflow-y-auto p-5 space-y-5 text-sm text-slate-300 leading-relaxed">
+
+                <div class="bg-emerald-950/30 border-l-2 border-emerald-500 rounded-r-lg p-3">
+                    <p class="text-emerald-200">一句話：<span class="font-bold">這是一輛專門追龍捲風的雷達卡車（Doppler on Wheels, 簡稱 DOW）。本網站把科學家用它研究風暴的各種技術，做成你可以動手玩的互動展示——不需要任何背景知識。</span></p>
+                </div>
+
+                <div>
+                    <h3 class="text-white font-bold mb-1.5 flex items-center gap-2"><span class="text-emerald-400">①</span> 為什麼需要這台車？</h3>
+                    <p>龍捲風生成又快又小，固定在山頂或機場的雷達站離太遠、看不清楚。DOW 把雷達縮小裝上卡車，科學家能開著它衝到風暴旁 1～2 公里拍高解析度資料——就像把固定相機換成跟著運動員跑的攝影師。目的：在龍捲風形成的前幾分鐘預測它、提早發警報救人。</p>
+                </div>
+
+                <div>
+                    <h3 class="text-white font-bold mb-2 flex items-center gap-2"><span class="text-emerald-400">②</span> 網站裡每一塊在玩什麼？</h3>
+                    <div class="space-y-2.5">
+                        <div class="bg-slate-950 border border-slate-800 rounded-lg p-3">
+                            <p class="font-bold text-emerald-300"><i class="fa-solid fa-satellite-dish"></i> 雷達控制台（彩色圓形圖）</p>
+                            <p class="text-[13px]">雷達轉一圈畫出的圖。顏色＝雨多大（綠小雨、黃中雨、紅強降雨），中間亮白塊就是模擬的超級胞風暴。可調雷達仰角看上下掃的差別。</p>
+                        </div>
+                        <div class="bg-slate-950 border border-slate-800 rounded-lg p-3">
+                            <p class="font-bold text-emerald-300"><i class="fa-solid fa-layer-group"></i> 雙偏振雷達（ZDR／CC／KDP）</p>
+                            <p class="text-[13px]">同時發橫向＋直向兩道電波，就能知道雨滴形狀。打開龍捲風後圖上會出現一塊特殊區域，代表「龍捲風正把地面的東西捲上天」——這是確認龍捲風存在最直接的雷達證據。</p>
+                        </div>
+                        <div class="bg-slate-950 border border-slate-800 rounded-lg p-3">
+                            <p class="font-bold text-emerald-300"><i class="fa-solid fa-wave-square"></i> 速度退疊（Nyquist）</p>
+                            <p class="text-[13px]">雷達測風速有「天花板」，太快的風會被誤判成反方向的微風（速度折疊）。自己拖滑桿製造這個錯誤、再一鍵還原，看科學家每次都要做的修正。</p>
+                        </div>
+                        <div class="bg-slate-950 border border-slate-800 rounded-lg p-3">
+                            <p class="font-bold text-emerald-300"><i class="fa-solid fa-microchip"></i> 雷達訊號鏈</p>
+                            <p class="text-[13px]">電波從打出去到變成螢幕上的彩色點，要經過 11 個電子元件。點每個方塊看它的作用，還能調發射功率和天線大小看探測距離怎麼變。（想深入可展開「完整深入解說」）</p>
+                        </div>
+                        <div class="bg-slate-950 border border-slate-800 rounded-lg p-3">
+                            <p class="font-bold text-emerald-300"><i class="fa-solid fa-arrows-left-right-to-line"></i> 雙都卜勒合成</p>
+                            <p class="text-[13px]">一台車只看得到「風往我這／離我」的方向。兩三台 DOW 從不同角度同時掃，數學交叉就能還原完整風向。拖動雷達車讓夾角接近 90° 最準。</p>
+                        </div>
+                        <div class="bg-slate-950 border border-slate-800 rounded-lg p-3">
+                            <p class="font-bold text-emerald-300"><i class="fa-solid fa-gamepad"></i> 部署決策遊戲</p>
+                            <p class="text-[13px]">你當追風指揮官，把車停到好位置、對準風暴、按開始觀測，看你的決定得幾分——太遠資料糊、太近會被命中。反映真實出任務前的風險評估。</p>
+                        </div>
+                        <div class="bg-slate-950 border border-slate-800 rounded-lg p-3">
+                            <p class="font-bold text-emerald-300"><i class="fa-solid fa-cube"></i> 3D 卡車模型＋掃描動畫</p>
+                            <p class="text-[13px]">用滑鼠轉動的 3D 卡車，點零件看功能。切換 PPI（水平轉一圈）／RHI（固定方向上下搖）／ZENITH（對準正上方慢轉）看天線實際的掃描方式。</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-white font-bold mb-1.5 flex items-center gap-2"><span class="text-emerald-400">③</span> 一個生活化的比喻</h3>
+                    <p>都卜勒效應＝救護車靠近時音調變高、遠離時變低。雷達就是用回波電波的「音調變化」算出風往哪吹、多快——只是它用的是電磁波，不是聲音。</p>
+                </div>
+            </div>
+            <!-- 底部 -->
+            <div class="border-t border-slate-800 p-4 shrink-0 flex justify-end">
+                <button id="closeTourBtn2" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-sm rounded-lg transition-all flex items-center gap-2"><i class="fa-solid fa-rocket"></i> 開始探索</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模組子導覽（頁面變長後快速跳轉） -->
+    <nav class="sticky top-[60px] sm:top-[68px] z-40 bg-slate-950/85 backdrop-blur border-b border-slate-800/80 overflow-x-auto">
+        <div class="max-w-7xl mx-auto px-4 py-2 flex items-center gap-2 text-[11px] font-mono whitespace-nowrap">
+            <span class="text-slate-600 shrink-0"><i class="fa-solid fa-compass"></i> 模組：</span>
+            <a href="#radar-stage" class="shrink-0 px-2 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 hover:text-emerald-400 hover:border-emerald-500/50 transition-all">雷達控制台</a>
+            <a href="#dealias-section" class="shrink-0 px-2 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 hover:text-emerald-400 hover:border-emerald-500/50 transition-all">速度退疊</a>
+            <a href="#model3d-section" class="shrink-0 px-2 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 hover:text-emerald-400 hover:border-emerald-500/50 transition-all">3D 結構</a>
+            <a href="#signal-section" class="shrink-0 px-2 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 hover:text-emerald-400 hover:border-emerald-500/50 transition-all">訊號鏈</a>
+            <a href="#dualdoppler-section" class="shrink-0 px-2 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 hover:text-emerald-400 hover:border-emerald-500/50 transition-all">雙都卜勒</a>
+            <a href="#deploy-section" class="shrink-0 px-2 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 hover:text-emerald-400 hover:border-emerald-500/50 transition-all">部署模擬</a>
+        </div>
+    </nav>
+
     <!-- 主內容區 -->
     <main class="flex-grow max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
         
         <!-- 左側：多普勒雷達即時模擬控制台 (7/12) -->
-        <section class="lg:col-span-7 flex flex-col gap-6">
+        <section class="reveal lg:col-span-7 flex flex-col gap-6">
             
             <!-- 雷達顯示螢幕 -->
             <div id="radar-stage" class="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col items-center justify-center relative overflow-hidden shadow-2xl">
@@ -198,8 +332,11 @@
                     <div>
                         <label for="radarMode" class="block text-xs text-slate-400 mb-1 font-mono">雷達模式</label>
                         <select id="radarMode" onchange="changeRadarMode()" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs text-emerald-400 font-mono focus:outline-none focus:border-emerald-500">
-                            <option value="reflectivity">回波強度 (Reflectivity)</option>
-                            <option value="velocity">風場風速 (Velocity)</option>
+                            <option value="reflectivity">回波強度 Z (Reflectivity)</option>
+                            <option value="velocity">風場風速 V (Velocity)</option>
+                            <option value="zdr">雙偏振：差分反射率 ZDR</option>
+                            <option value="cc">雙偏振：相關係數 CC (ρhv)</option>
+                            <option value="kdp">雙偏振：比差分相位 KDP</option>
                         </select>
                     </div>
                     <div id="azimuthControl" class="hidden">
@@ -219,6 +356,29 @@
                             <i class="fa-solid fa-wind animate-pulse"></i> 模擬龍捲風
                         </button>
                     </div>
+                </div>
+
+                <!-- 模式科普說明 + 原理展開 -->
+                <div class="w-full mt-3 text-left">
+                    <p id="radarModeDesc" class="text-[11px] text-slate-300 leading-relaxed">回波強度：顏色越暖代表雨越大、甚至有冰雹。</p>
+                    <details class="mt-1">
+                        <summary class="text-[10px] text-emerald-400/80 cursor-pointer hover:text-emerald-300 select-none">📐 原理</summary>
+                        <p id="radarModeFormula" class="text-[10px] text-slate-400 font-mono mt-1 pl-3 border-l border-slate-700">Z 反射率因子，單位 dBZ。雨滴越多越大，回波越強。</p>
+                    </details>
+                </div>
+
+                <!-- TDS 龍捲風碎片自動判讀（雙偏振核心應用） -->
+                <div id="tdsPanel" class="w-full mt-2 rounded border border-slate-800 bg-slate-950 p-2 text-left">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-mono text-slate-500 uppercase">TDS 龍捲風碎片自動判讀</span>
+                        <span id="tdsStatus" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">未偵測</span>
+                    </div>
+                    <div id="tdsChecklist" class="grid grid-cols-3 gap-1 mt-1.5 text-[9px] font-mono text-slate-500">
+                        <span data-cond="z" class="text-slate-500">◯ 高回波 Z≥45</span>
+                        <span data-cond="zdr" class="text-slate-500">◯ 低 ZDR≈0</span>
+                        <span data-cond="cc" class="text-slate-500">◯ 低 CC&lt;0.8</span>
+                    </div>
+                    <p class="text-[9px] text-slate-600 mt-1.5 leading-relaxed">三條件同時成立＝雷達確認龍捲風把地面碎片捲上天（切到 <span class="text-emerald-400">CC</span> 模式看氣旋中心的紅色驟降最明顯）。</p>
                 </div>
             </div>
 
@@ -254,7 +414,7 @@
         </section>
 
         <!-- 右側：DOW 家族進化史 & ✨ Gemini AI 協同官 (5/12) -->
-        <section class="lg:col-span-5 flex flex-col gap-6">
+        <section class="reveal lg:col-span-5 flex flex-col gap-6" style="transition-delay: .12s;">
             
             <!-- 車輛詳細展示面板 -->
             <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between shadow-2xl">
@@ -401,8 +561,53 @@
         </section>
     </main>
 
+    <!-- ✨ P2：速度退疊 (Nyquist Folding) 教學互動 -->
+    <section id="dealias-section" class="reveal max-w-7xl w-full mx-auto p-4 mt-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-2xl">
+            <div class="border-b border-slate-800 pb-3 mb-4">
+                <h2 class="text-xl font-black text-white flex items-center gap-2"><i class="fa-solid fa-wave-square text-emerald-400"></i> 速度退疊：多普勒雷達的經典難題</h2>
+                <p class="text-xs text-slate-400 mt-1 leading-relaxed">多普勒雷達能測的最大風速有個上限（Nyquist 速度）；風速一旦超過，畫面就會「折疊」，把朝你吹來的狂風錯誤顯示成遠離。拖下方滑桿調低上限，看左圖如何出現假性反轉，右圖則是演算法還原後的真實風場。</p>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="bg-slate-950 border border-slate-800 rounded-lg p-3">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-mono text-red-400"><i class="fa-solid fa-triangle-exclamation"></i> 原始（折疊）RAW</span>
+                        <span class="text-[10px] font-mono text-slate-500">雷達實際看到的</span>
+                    </div>
+                    <canvas id="dealiasRaw" role="img" aria-label="折疊前的原始徑向速度畫面" width="360" height="300" class="w-full rounded bg-black"></canvas>
+                </div>
+                <div class="bg-slate-950 border border-slate-800 rounded-lg p-3">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-mono text-emerald-400"><i class="fa-solid fa-check"></i> 退疊後（真實風場）UNFOLDED</span>
+                        <span class="text-[10px] font-mono text-slate-500">演算法還原的</span>
+                    </div>
+                    <canvas id="dealiasTrue" role="img" aria-label="退疊還原後的真實徑向速度畫面" width="360" height="300" class="w-full rounded bg-black"></canvas>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 items-end">
+                <div class="md:col-span-2">
+                    <label for="nyquistSlider" class="block text-xs text-slate-400 mb-1 font-mono">Nyquist 速度上限 V<sub>nyq</sub> = <span id="nyquistVal" class="text-emerald-400">20</span> m/s</label>
+                    <input type="range" id="nyquistSlider" min="8" max="64" value="20" step="1" class="w-full accent-emerald-500 h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer">
+                    <p class="text-[10px] text-slate-500 mt-1 leading-relaxed">↑ 拉低上限：折疊更嚴重（早期雷達的困境）；拉高：畫面乾淨但需更高 PRF。此中氣旋核心真實風速約 <span id="trueMaxVel" class="text-slate-300">65</span> m/s。</p>
+                </div>
+                <div class="bg-slate-950 border border-slate-800 rounded p-2 text-xs font-mono">
+                    <div class="flex justify-between"><span class="text-slate-500">脈衝重複頻率 PRF</span><span id="prfVal" class="text-emerald-300">2500 Hz</span></div>
+                    <div class="flex justify-between mt-1"><span class="text-slate-500">折疊區占比</span><span id="foldPct" class="text-amber-400">0%</span></div>
+                </div>
+            </div>
+            <details class="mt-3">
+                <summary class="text-[10px] text-emerald-400/80 cursor-pointer hover:text-emerald-300 select-none">📐 原理</summary>
+                <p class="text-[10px] text-slate-400 font-mono mt-1 pl-3 border-l border-slate-700 leading-relaxed">
+                    Nyquist 速度 V<sub>nyq</sub> = λ·PRF / 4（λ＝波長，X 波段約 3.2 cm）。<br>
+                    測到的視速度 V<sub>a</sub> = ((V + V<sub>nyq</sub>) mod 2V<sub>nyq</sub>) − V<sub>nyq</sub>；超過 ±V<sub>nyq</sub> 就折回反向。<br>
+                    這與類比訊號的取樣定理（ADC 取樣率不足會混疊）是同一個數學概念——P3 方塊圖會再串起來。
+                </p>
+            </details>
+        </div>
+    </section>
+
     <!-- ✨ 全新獨立區塊：DOW 雷達車 3D 結構互動模型 -->
-    <section id="model3d-section" class="max-w-7xl w-full mx-auto p-4 mt-4">
+    <section id="model3d-section" class="reveal max-w-7xl w-full mx-auto p-4 mt-4">
         <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-2xl">
             <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-4 border-b border-slate-800 pb-3">
                 <div>
@@ -415,6 +620,15 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <!-- 3D 渲染畫布容器 -->
                 <div class="lg:col-span-2 relative">
+                    <!-- 掃描示意模式切換 -->
+                    <div class="flex flex-wrap items-center gap-1.5 mb-2">
+                        <span class="text-[10px] text-slate-500 font-mono mr-1">掃描示意：</span>
+                        <button id="scanModeBtn-static" onclick="setScanMode('static')" class="px-2 py-1 rounded text-[11px] font-mono bg-emerald-900/30 border border-emerald-500 text-emerald-400 transition-all">靜態檢視</button>
+                        <button id="scanModeBtn-ppi" onclick="setScanMode('ppi')" class="px-2 py-1 rounded text-[11px] font-mono bg-slate-950 border border-slate-800 text-slate-400 hover:text-emerald-400 hover:border-emerald-500/50 transition-all">PPI 水平掃描</button>
+                        <button id="scanModeBtn-rhi" onclick="setScanMode('rhi')" class="px-2 py-1 rounded text-[11px] font-mono bg-slate-950 border border-slate-800 text-slate-400 hover:text-emerald-400 hover:border-emerald-500/50 transition-all">RHI 俯仰掃描</button>
+                        <button id="scanModeBtn-zenith" onclick="setScanMode('zenith')" class="px-2 py-1 rounded text-[11px] font-mono bg-slate-950 border border-slate-800 text-slate-400 hover:text-emerald-400 hover:border-emerald-500/50 transition-all">ZENITH 天頂</button>
+                    </div>
+                    <p id="scanModeCaption" class="text-[10px] text-slate-500 mb-2 leading-relaxed">靜態檢視：天線歸位，可點綠色光點看零件說明。</p>
                     <div id="model3dCanvasWrap" class="w-full h-[420px] sm:h-[480px] bg-slate-950 rounded-lg border border-slate-800 overflow-hidden relative cursor-grab active:cursor-grabbing"></div>
                     <div id="model3dTooltip" class="hidden absolute pointer-events-none bg-slate-950/95 border border-emerald-500/50 text-emerald-300 text-xs font-mono px-2 py-1 rounded shadow-lg z-20"></div>
                 </div>
@@ -428,6 +642,239 @@
                         <span class="text-[10px] text-slate-500 block mb-1.5 font-mono">全部零件：</span>
                         <div id="partsQuickList" class="flex flex-wrap gap-1.5"></div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ✨ P3：雷達系統訊號鏈方塊圖（電機亮點，可調參數互動） -->
+    <section id="signal-section" class="reveal max-w-7xl w-full mx-auto p-4 mt-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-2xl">
+            <div class="border-b border-slate-800 pb-3 mb-4">
+                <h2 class="text-xl font-black text-white flex items-center gap-2"><i class="fa-solid fa-microchip text-emerald-400"></i> 雷達系統訊號鏈：一個電波的完整旅程</h2>
+                <p class="text-xs text-slate-400 mt-1 leading-relaxed">點下方任一方塊，看該級的訊號波形如何變化。拉 PRF 與取樣率，親手體驗脈衝列與「混疊」——外差混頻、I/Q 解調、ADC 取樣定理，都是電機/訊號課程的核心，也是別的氣象網站不會有的角度。</p>
+            </div>
+            <!-- 方塊圖（由 JS 生成方塊與箭頭） -->
+            <div id="sigBlocks" class="flex flex-wrap items-center gap-1 mb-4"></div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div class="lg:col-span-2">
+                    <canvas id="sigCanvas" role="img" aria-label="目前選取訊號鏈節點的波形示意圖" width="600" height="220" class="w-full rounded bg-black border border-slate-800"></canvas>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+                        <div>
+                            <label for="sigPRF" class="block text-[10px] text-slate-400 mb-1 font-mono">PRF＝<span id="sigPRFval" class="text-emerald-400">1500</span> Hz</label>
+                            <input type="range" id="sigPRF" min="500" max="4000" step="100" value="1500" class="w-full accent-emerald-500 h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                        <div>
+                            <label for="sigFs" class="block text-[10px] text-slate-400 mb-1 font-mono">ADC 取樣率 fs＝<span id="sigFsval" class="text-emerald-400">20</span></label>
+                            <input type="range" id="sigFs" min="2" max="40" step="1" value="20" class="w-full accent-emerald-500 h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                        <div>
+                            <label for="sigF" class="block text-[10px] text-slate-400 mb-1 font-mono">訊號頻率 f＝<span id="sigFval" class="text-emerald-400">5</span></label>
+                            <input type="range" id="sigF" min="1" max="20" step="1" value="5" class="w-full accent-emerald-500 h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-slate-500 mt-1">PRF 影響「發射機」脈衝列密度；取樣率 fs 與訊號頻率 f 影響「ADC 取樣」是否混疊（fs &lt; 2f 即混疊）。</p>
+                </div>
+                <div class="bg-slate-950 border border-slate-800 rounded-lg p-4 flex flex-col">
+                    <span class="text-xs font-mono text-slate-500 uppercase">SIGNAL STAGE</span>
+                    <h3 id="sigTitle" class="text-lg font-bold text-emerald-400 mb-2 mt-1">發射機</h3>
+                    <p id="sigDesc" class="text-sm text-slate-300 leading-relaxed flex-grow"></p>
+                    <details class="mt-3">
+                        <summary class="text-[10px] text-emerald-400/80 cursor-pointer hover:text-emerald-300 select-none">📐 原理</summary>
+                        <p id="sigFormula" class="text-[10px] text-slate-400 font-mono mt-1 pl-3 border-l border-slate-700 leading-relaxed"></p>
+                    </details>
+                </div>
+            </div>
+
+            <!-- 🔬 P3 深入解說：一個電波的完整旅程（完整 11 級拆解） -->
+            <details class="mt-5 group">
+                <summary class="cursor-pointer select-none flex items-center gap-2 text-sm font-bold text-emerald-400 hover:text-emerald-300 bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 transition-all">
+                    <i class="fa-solid fa-flask"></i> 完整深入解說：一個電波的完整旅程（11 級拆解＋雷達方程式）
+                    <i class="fa-solid fa-chevron-down ml-auto text-xs text-slate-500 group-open:rotate-180 transition-transform"></i>
+                </summary>
+                <div class="mt-3 bg-slate-950 border border-slate-800 rounded-lg p-5 text-sm text-slate-300 leading-relaxed space-y-5">
+
+                    <div>
+                        <p class="text-slate-400">雷達的核心邏輯很簡單：<span class="text-emerald-300">發射一道電磁波 → 打到目標（雨滴／冰雹／碎片）→ 部分能量反彈回來 → 量回波的時間差（得到距離）與頻率差（得到速度）</span>。但「發射」到「接收」之間隔著 11 個關鍵環節，每個都在做不同的物理工作。整條鏈分兩段：<span class="text-amber-300">發射路徑</span>把能量送出去，<span class="text-sky-300">接收路徑</span>把微弱回波還原成資料。</p>
+                    </div>
+
+                    <!-- 發射路徑 -->
+                    <h4 class="text-amber-300 font-black flex items-center gap-2 border-b border-slate-800 pb-1.5"><i class="fa-solid fa-arrow-up-from-bracket"></i> 發射路徑（Transmit Path）</h4>
+
+                    <div class="space-y-4 pl-1">
+                        <div>
+                            <p class="font-bold text-white">1. 發射機 Transmitter（磁控管／速調管）— 系統的心臟</p>
+                            <p>電子在強磁場中以諧振腔固有頻率振盪，輻射出高功率微波脈衝。DOW 工作在 <span class="text-emerald-300">C 波段（5.5 GHz, λ≈5 cm）</span>或 <span class="text-emerald-300">X 波段（9.4 GHz, λ≈3 cm）</span>。峰值功率 250 kW～1 MW、脈衝寬 0.5～2 µs、PRF 1,000～5,000 Hz，工作週期（占空比＝脈衝寬×PRF）通常僅約 0.1～1%——大部分時間其實在「聽」。</p>
+                            <p class="text-[12px] text-slate-400 mt-1 font-mono pl-3 border-l border-slate-700">為何功率這麼高？對<span class="text-amber-300">單一點目標</span>，回波功率與距離四次方成反比（P_r ∝ 1/r⁴）；對<span class="text-amber-300">充滿波束的氣象目標</span>（雨區），因取樣體積隨 r² 增大、抵銷一部分衰減，實際為 1/r²（這也是後面 DSP 要「×r²」還原反射率的原因）。無論哪種，100 km 外的回波都已弱了十幾個數量級，必須先轟出極高功率。</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">2. 波導管 Waveguide</p>
+                            <p>頻率太高無法用普通電線傳輸，改用空心金屬管。微波以 <span class="text-emerald-300">TE₁₀ 模態</span>在管內反射前進，幾乎無損。有截止頻率 f_c = c/(2a)（a 為管寬），低於它無法傳播，天然就是高通濾波器（實務上工作在單模頻段內）。彎折處需精確弧度、法蘭接頭要密封防洩漏，而<span class="text-emerald-300">旋轉關節（Rotary Joint）</span>讓波導在天線旋轉時仍保持電氣連接——這是 DOW 的關鍵機械挑戰。</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">3. 環形器 Circulator — 讓收發共用一支天線</p>
+                            <p>三端口鐵氧體器件，利用<span class="text-emerald-300">鐵氧體在外加磁場下的非互易（gyromagnetic）特性</span>讓微波只能單向循環：發射機→天線→接收機→終端吸收，隔離度 20～40 dB。</p>
+                            <p class="text-[12px] text-slate-400 mt-1 font-mono pl-3 border-l border-slate-700">為何重要？發射峰值 250 kW，接收機只能承受幾 mW。沒有環形器保護，每發一次脈衝就燒毀接收機。</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">4. 天線 Antenna（拋物面反射器）</p>
+                            <p>直徑 2～2.5 m 的拋物面碟。饋源在焦點，碟面把球面波整形成很窄的<span class="text-emerald-300">筆狀波束（Pencil Beam）</span>。波束寬 θ ≈ 1.2λ/D ≈ <span class="text-emerald-300">1°</span>（X 波段）、增益約 <span class="text-emerald-300">40～45 dBi</span>、旁瓣 &lt; −25 dB。波束 1° 意味著 100 km 外照亮範圍僅 1.7 km 寬——這就是 DOW 能看清龍捲風精細結構的原因。現代 DOW 饋源有正交雙埠，<span class="text-emerald-300">同時發射水平(H)與垂直(V)極化</span>，這是雙偏振 ZDR/CC/KDP 的硬體基礎。</p>
+                        </div>
+                    </div>
+
+                    <!-- 接收路徑 -->
+                    <h4 class="text-sky-300 font-black flex items-center gap-2 border-b border-slate-800 pb-1.5"><i class="fa-solid fa-arrow-down-to-bracket"></i> 接收路徑（Receive Path）</h4>
+
+                    <div class="space-y-4 pl-1">
+                        <div>
+                            <p class="font-bold text-white">5. 低雜訊放大器 LNA</p>
+                            <p>回波抵達時功率極其微弱，僅約 10⁻¹³～10⁻¹⁵ 瓦（對應 −100～−120 dBm）。LNA 在<span class="text-emerald-300">不加入太多雜訊</span>的前提下放大 20～30 dB。關鍵指標雜訊指數 NF = 10·log₁₀(SNR_in/SNR_out)，優秀者 &lt; 1.5 dB。依 <span class="text-emerald-300">Friis 雜訊公式</span>，信號越早放大、後級雜訊影響越小，因此 LNA 緊貼天線背面，多採 GaAs／GaN HEMT 電晶體；至於液氮冷卻到 77 K，主要見於電波天文等對靈敏度要求極端的系統，一般氣象雷達少用。</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">6. 混頻器 Mixer ＋ 本地振盪器 LO（超外差）</p>
+                            <p>微波頻率太高，後端無法直接處理。混頻器把 RF 與 LO 相乘搬到較低的<span class="text-emerald-300">中頻 IF</span>：f_IF = f_RF − f_LO（例：5500 − 5430 = 70 MHz）。都卜勒位移 f_d = 2v/λ 完整保留在中頻裡（50 m/s 風速：C 波段 λ≈5.45 cm 約 1.8 kHz、X 波段 λ≈3.2 cm 約 3.1 kHz）。</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">7. 中頻放大器 IF Amplifier</p>
+                            <p>在固定的 70 MHz 做主要增益與帶通濾波。這一級可做<span class="text-emerald-300">匹配濾波（Matched Filter）</span>：響應與發射脈衝時間反轉，使輸出信噪比最大化——理論上 SNR 只取決於脈衝能量，不取決於形狀，讓工程師可用更複雜的波形（如線性調頻 LFM）換取靈活性。</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">8. I/Q 解調器 — 同時拿到振幅與相位</p>
+                            <p>把中頻分兩路，分別乘 cos 與 sin（差 90°），得到同相 I 與正交 Q，組成複數向量 <span class="text-emerald-300">s̃ = I + jQ = A·e^(jφ)</span>。振幅 A = √(I²+Q²) → 回波強度；相位 φ = atan2(Q,I) → 含速度資訊。相鄰脈衝相位差 Δφ 給出徑向速度 v_r = λ·Δφ/(4πT)。雙偏振有兩套 I/Q，輸出 I_H, Q_H, I_V, Q_V 四路資料流。</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">9. ADC 類比數位轉換器</p>
+                            <p>把 I、Q 取樣量化成數字。取樣率須滿足奈奎斯特定理（實數訊號 fs ≥ 2×最高頻率；此處為 I/Q 複數基頻，複數取樣率只需 ≥ 訊號頻寬），解析度 12～16 位元，動態範圍需涵蓋毛毛雨到大冰雹（&gt; 80 dB）。每個取樣點對應一個<span class="text-emerald-300">距離庫（Range Gate）</span>：Δr = c·Δt/2，2 MHz 取樣 → 距離解析度 75 m。</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">10. DSP 數位信號處理 — 真正的雷達智慧</p>
+                            <p>對每個距離庫的 I/Q 序列做<span class="text-emerald-300">脈衝對處理（Pulse Pair）</span>：</p>
+                            <ul class="text-[12px] text-slate-400 mt-1.5 space-y-1 font-mono pl-3 border-l border-slate-700">
+                                <li>反射率 <span class="text-emerald-300">Z</span> ← 回波功率（×r² 補距離衰減）</li>
+                                <li>平均徑向速度 <span class="text-emerald-300">V̄</span> = λ/(4πT)·arg(Σ s̃ₙ*·s̃ₙ₊₁)</li>
+                                <li>譜寬 <span class="text-emerald-300">W</span> ← 氣流紊亂程度（龍捲風極高）</li>
+                                <li>ZDR = 10·log(Z_H/Z_V)、ρhv(CC) = |⟨S_H S_V*⟩|/√(Z_H Z_V)、KDP = d(φ_DP)/dr ÷ 2</li>
+                                <li>速度去折疊：偵測相鄰像素跳變超過 Nyquist 處，±2·V_nyq 修正（即 P2 展示的算法）</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">11. 顯示／儲存 Display &amp; Archive</p>
+                            <p>輸出 <span class="text-emerald-300">PPI</span>（360° 平面位置圖）、<span class="text-emerald-300">RHI</span>（固定方位的距離–高度剖面），並把每個距離庫的 Z、V、W、ZDR、CC、KDP 存成 <span class="text-emerald-300">NetCDF</span> 科學標準格式供事後分析。</p>
+                        </div>
+                    </div>
+
+                    <!-- 流程圖 -->
+                    <div>
+                        <h4 class="text-emerald-300 font-black flex items-center gap-2 border-b border-slate-800 pb-1.5 mb-2"><i class="fa-solid fa-diagram-project"></i> 完整訊號流程</h4>
+                        <pre class="text-[10px] sm:text-[11px] text-emerald-300/90 font-mono bg-black border border-slate-800 rounded-lg p-3 overflow-x-auto leading-snug">磁控管發射器
+   │ 脈衝微波（250 kW，1 µs）
+   ▼
+波導管 ── 低損耗傳輸
+   ▼
+環形器 ──────────────────────────────┐
+   │ 發射出去                        │ 接收回來
+   ▼                                 │
+拋物面天線 ═══ 電波傳播 ═══ 目標（雨／冰雹）
+                                     │
+                                  環形器
+                                     │
+                                  LNA（+25 dB，NF &lt; 1.5 dB）
+                                     │
+                                  混頻器（5.5 GHz → 70 MHz）
+                                     │
+                                  IF 放大 ＋ 匹配濾波
+                                     │
+                                  I/Q 解調（→ 複數向量）
+                                     │
+                                  ADC（75 m 距離庫）
+                                     │
+                                  DSP（Z, V, W, ZDR, CC, KDP）
+                                     │
+                                  PPI／RHI 顯示 ＋ NetCDF 存檔</pre>
+                    </div>
+
+                    <!-- 一句話總結 -->
+                    <div class="bg-emerald-950/30 border-l-2 border-emerald-500 rounded-r-lg p-3">
+                        <p class="text-emerald-200"><span class="font-bold">一句話總結：</span>雷達車發出一道瞬間功率達 250 kW（約等於 2,500 個 100 瓦燈泡同時亮起）的電磁脈衝，100 km 外的雨滴只反彈回其中極微小的一部分（弱了十幾個數量級），雷達車的電子系統卻能在幾毫秒內從這個微弱到難以想像的信號裡，精確算出每個地點的降雨強度和風速——上面 11 個環節就是這個奇蹟發生的過程。</p>
+                    </div>
+                </div>
+            </details>
+        </div>
+    </section>
+
+    <!-- ✨ P4：雙都卜勒風場合成（為什麼需要一個車隊） -->
+    <section id="dualdoppler-section" class="reveal max-w-7xl w-full mx-auto p-4 mt-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-2xl">
+            <div class="border-b border-slate-800 pb-3 mb-4">
+                <h2 class="text-xl font-black text-white flex items-center gap-2"><i class="fa-solid fa-arrows-left-right-to-line text-emerald-400"></i> 雙都卜勒合成：為什麼追風要一整個車隊？</h2>
+                <p class="text-xs text-slate-400 mt-1 leading-relaxed">單台雷達只量得到「風往我這／離我多快」（視線方向分量），側向的風測不到。兩台以上 DOW 從不同角度同時觀測，把各自的視線分量交叉，就能還原真正的二維風向量。拖曳地圖上的 DOW，讓兩束波在風暴處的交角接近 90°，合成最準。</p>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div class="lg:col-span-2">
+                    <canvas id="ddCanvas" role="img" aria-label="雙都卜勒風場合成俯視互動地圖" width="620" height="440" class="w-full rounded bg-black border border-slate-800 cursor-grab active:cursor-grabbing touch-none"></canvas>
+                    <p class="text-[10px] text-slate-500 mt-1">灰色細箭頭＝真實風場；彩色箭頭＝雷達合成結果（<span class="text-emerald-400">綠</span>＝準、<span class="text-amber-400">黃</span>＝普通、<span class="text-red-400">紅</span>＝交角太差不可靠）。拖曳 DOW 標記移動位置。</p>
+                </div>
+                <div class="bg-slate-950 border border-slate-800 rounded-lg p-4 flex flex-col gap-3">
+                    <div>
+                        <span class="text-xs font-mono text-slate-500 uppercase block mb-1.5">部署雷達台數</span>
+                        <div class="grid grid-cols-3 gap-1.5" id="ddCountBtns">
+                            <button data-n="1" class="dd-count py-1.5 rounded text-xs font-mono font-bold bg-slate-900 border border-slate-800 text-slate-400">1 台</button>
+                            <button data-n="2" class="dd-count py-1.5 rounded text-xs font-mono font-bold bg-emerald-900/30 border border-emerald-500 text-emerald-400">2 台</button>
+                            <button data-n="3" class="dd-count py-1.5 rounded text-xs font-mono font-bold bg-slate-900 border border-slate-800 text-slate-400">3 台</button>
+                        </div>
+                    </div>
+                    <div class="bg-slate-900 border border-slate-800 rounded p-2 text-xs font-mono">
+                        <div class="flex justify-between"><span class="text-slate-500">風暴處波束交角</span><span id="ddAngle" class="text-emerald-300">—</span></div>
+                        <div class="flex justify-between mt-1"><span class="text-slate-500">合成可靠度</span><span id="ddQuality" class="text-emerald-400">—</span></div>
+                    </div>
+                    <p id="ddVerdict" class="text-xs text-slate-300 leading-relaxed flex-grow"></p>
+                    <details>
+                        <summary class="text-[10px] text-emerald-400/80 cursor-pointer hover:text-emerald-300 select-none">📐 原理</summary>
+                        <p class="text-[10px] text-slate-400 font-mono mt-1 pl-3 border-l border-slate-700 leading-relaxed">
+                            每台雷達只得視線分量：V_r = u·e_x + v·e_y（e 為雷達指向單位向量）。<br>
+                            ≥2 台 → 解聯立方程式得水平風 (u, v)。<br>
+                            兩束交角越接近 90°，解越穩定；接近 0°/180°（共線）時誤差爆增。
+                        </p>
+                    </details>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ✨ P5：部署決策模擬（追風小遊戲，單一情境） -->
+    <section id="deploy-section" class="reveal max-w-7xl w-full mx-auto p-4 mt-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-2xl">
+            <div class="border-b border-slate-800 pb-3 mb-4">
+                <h2 class="text-xl font-black text-white flex items-center gap-2"><i class="fa-solid fa-gamepad text-emerald-400"></i> 部署決策模擬：你是今天的追風指揮官</h2>
+                <p class="text-xs text-slate-400 mt-1 leading-relaxed">一顆超級胞正沿著預測路徑（紅色帶）移動，龍捲風就在其中。拖曳 DOW 停到你想觀測的位置、調整天線方位對準風暴，再按「開始觀測」。事後依「資料品質」與「安全」評分——太遠資料糊、太近會被命中，停在路邊較好撤離。</p>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div class="lg:col-span-2">
+                    <canvas id="deployCanvas" role="img" aria-label="部署決策模擬俯視地圖" width="640" height="460" class="w-full rounded bg-black border border-slate-800 cursor-grab active:cursor-grabbing touch-none"></canvas>
+                    <p class="text-[10px] text-slate-500 mt-1">拖曳綠色 <i class="fa-solid fa-truck-front"></i> DOW 標記移動；藍色線為天線指向。紅色帶＝龍捲風預測路徑（停進去會被命中）。</p>
+                </div>
+                <div class="bg-slate-950 border border-slate-800 rounded-lg p-4 flex flex-col gap-3">
+                    <div>
+                        <label for="deployAz" class="block text-xs text-slate-400 mb-1 font-mono">天線方位角＝<span id="deployAzVal" class="text-emerald-400">225</span>°（0°=北，順時針）</label>
+                        <input type="range" id="deployAz" min="0" max="359" step="1" value="225" class="w-full accent-emerald-500 h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="deployRun" class="py-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-xs rounded transition-all flex items-center justify-center gap-1"><i class="fa-solid fa-play"></i> 開始觀測</button>
+                        <button id="deployReset" class="py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold text-xs rounded transition-all flex items-center justify-center gap-1"><i class="fa-solid fa-rotate-left"></i> 重新部署</button>
+                    </div>
+                    <div class="bg-slate-900 border border-slate-800 rounded p-2.5 text-xs font-mono space-y-1.5">
+                        <div class="flex justify-between"><span class="text-slate-500">資料品質</span><span id="deployData" class="text-slate-300">—</span></div>
+                        <div class="flex justify-between"><span class="text-slate-500">安全</span><span id="deploySafety" class="text-slate-300">—</span></div>
+                        <div class="flex justify-between border-t border-slate-800 pt-1.5"><span class="text-slate-400 font-bold">總評</span><span id="deployOverall" class="text-emerald-400 font-bold">—</span></div>
+                    </div>
+                    <p id="deployVerdict" class="text-xs text-slate-300 leading-relaxed flex-grow">調整好位置與方位，按「開始觀測」看追風教官的講評。</p>
+                    <details>
+                        <summary class="text-[10px] text-emerald-400/80 cursor-pointer hover:text-emerald-300 select-none">📐 評分原理</summary>
+                        <p class="text-[10px] text-slate-400 font-mono mt-1 pl-3 border-l border-slate-700 leading-relaxed">
+                            資料品質：與風暴最近距離越接近「甜蜜帶」(約 60px)越高，天線越對準中氣旋加分。<br>
+                            安全：離龍捲路徑帶越遠越高；停進路徑帶＝被命中(0 分)；靠近道路有撤離加分。
+                        </p>
+                    </details>
                 </div>
             </div>
         </div>
@@ -641,6 +1088,33 @@
 
         // 定義 dBZ 與徑向速度的配色表 (精確復刻 images.jpeg 專業色卡)
         function getRadarColor(val, mode) {
+            // 無資料（NaN / undefined）→ 透明，雙偏振模式在無降水處不上色
+            if (typeof val !== 'number' || isNaN(val)) return 'rgba(0,0,0,0)';
+            if (mode === 'zdr') {
+                // ZDR (dB)：≈0(冰雹/碎片)灰 → 雨滴越扁越大，綠→黃→紅
+                if (val < 0.2) return 'rgba(148,163,184,0.5)';   // 灰：球形(冰雹/碎片)
+                if (val < 0.6) return 'rgba(13,148,136,0.55)';
+                if (val < 1.2) return 'rgba(34,197,94,0.65)';
+                if (val < 2.0) return 'rgba(163,230,53,0.75)';
+                if (val < 3.0) return 'rgba(234,179,8,0.85)';
+                return 'rgba(239,68,68,0.95)';                   // 大雨滴
+            }
+            if (mode === 'cc') {
+                // CC / ρhv：高(純雨)藍綠 → 低(<0.8非氣象目標/碎片)轉紅，越紅越像碎片
+                if (val > 0.97) return 'rgba(13,148,136,0.5)';   // 純雨
+                if (val > 0.93) return 'rgba(34,197,94,0.6)';
+                if (val > 0.85) return 'rgba(234,179,8,0.8)';    // 混合相/融化層
+                if (val > 0.75) return 'rgba(249,115,22,0.9)';
+                return 'rgba(239,68,68,0.98)';                   // 驟降：龍捲風碎片(TDS)
+            }
+            if (mode === 'kdp') {
+                // KDP (°/km)：≈0(冰雹/碎片)灰 → 液態降雨越強，綠→黃→紅
+                if (val < 0.3) return 'rgba(71,85,105,0.35)';
+                if (val < 1.0) return 'rgba(34,197,94,0.55)';
+                if (val < 2.0) return 'rgba(163,230,53,0.7)';
+                if (val < 3.5) return 'rgba(234,179,8,0.85)';
+                return 'rgba(239,68,68,0.95)';
+            }
             if (mode === 'reflectivity') {
                 // dBZ 降雨反射率色帶 (從 -15dBZ 藍色到 50+dBZ 極致粉色/白色)
                 if (val < -15) return 'rgba(0,0,0,0)';
@@ -691,7 +1165,7 @@
             const dy = y - centerY;
             const distance = Math.sqrt(dx * dx + dy * dy);
 
-            if (distance > 200) return -20; // 限制在雷達動態觀測範圍內
+            if (distance > 200) return (mode === 'reflectivity' || mode === 'velocity') ? -20 : NaN; // 超出觀測範圍
 
             const center = centerOverride || getStormCenter();
             const scX = center.x;
@@ -702,72 +1176,85 @@
             const sDist = Math.sqrt(sDx * sDx + sDy * sDy);
             const sAngle = Math.atan2(sDy, sDx); // 弧度
 
-            let val = -20;
+            // ===== 先算「乾淨」反射率 Z(dBZ) 與區域旗標，供反射率與雙偏振共用 =====
+            let Z = -20;
+            // A. 寬廣的 stratiform 輕降雨帶
+            const rainband = Math.sin(sAngle - sDist * 0.03) * 15 - (sDist * 0.1);
+            if (rainband > -5) Z = Math.max(Z, 8 + rainband);
+            // B. 超大胞主要上升氣流核心與強降雨
+            if (sDist < 90) Z = Math.max(Z, 48 - sDist * 0.4);
+            // C. 經典釣鉤回波 (Hook Echo)：延伸扭曲的螺旋曲線
+            const targetAngle = 1.6; // 南側偏東
+            const hookSpiral = sAngle - (sDist * 0.06);
+            const angleDiff = Math.abs(hookSpiral - targetAngle);
+            let inHook = false;
+            if (sDist < 70 && sDist > 15 && angleDiff < 0.4) {
+                Z = Math.max(Z, (1.0 - angleDiff / 0.4) * 48 - (sDist * 0.15));
+                inHook = true;
+            }
+            // D. 冰雹/碎片核心
+            const inHailCore = sDist < 12;
+            if (inHailCore) Z = Math.max(Z, 55 - sDist * 1.5);
+            // E. 弱回波入流槽 (Inflow Notch)：乾空氣抽入
+            const notchAngle = sAngle - 0.5; // 東南側
+            if (sDist < 45 && sDist > 8 && Math.abs(notchAngle) < 0.5) Z = Math.max(-20, Z - 35);
 
             if (mode === 'reflectivity') {
-                // A. 寬廣的 stratiform 輕降雨帶
-                const rainband = Math.sin(sAngle - sDist * 0.03) * 15 - (sDist * 0.1);
-                if (rainband > -5) {
-                    val = Math.max(val, 8 + rainband);
-                }
+                let val = Z;
+                if (val > -15) val += (Math.random() - 0.5) * 6; // 雷達噪訊
+                return val;
+            }
 
-                // B. 超大胞主要上升氣流核心與強降雨 FFD (前側下沉)
-                if (sDist < 90) {
-                    // 核心高回波
-                    const coreVal = 48 - (sDist * 0.4);
-                    val = Math.max(val, coreVal);
-                }
-
-                // C. 經典釣鉤回波 (Hook Echo) 數值公式
-                // 釣鉤是一條延伸出去、在特定角度與半徑扭曲的螺旋曲線
-                const targetAngle = 1.6; // 南側偏東
-                const hookSpiral = sAngle - (sDist * 0.06);
-                const angleDiff = Math.abs(hookSpiral - targetAngle);
-                
-                if (sDist < 70 && sDist > 15 && angleDiff < 0.4) {
-                    // 強烈氣旋捲入產生的極強回波
-                    const hookIntensity = (1.0 - angleDiff / 0.4) * 48 - (sDist * 0.15);
-                    val = Math.max(val, hookIntensity);
-                }
-
-                // D. 冰雹核心 (TDS - Tornado Debris Signature)
-                if (sDist < 12) {
-                    val = Math.max(val, 55 - sDist * 1.5);
-                }
-
-                // E. 弱回波入流槽 (Inflow Notch) 屏蔽 (乾空氣抽入)
-                const notchAngle = sAngle - 0.5; // 東南側
-                if (sDist < 45 && sDist > 8 && Math.abs(notchAngle) < 0.5) {
-                    val = Math.max(-20, val - 35);
-                }
-
-                // 加上逼真的大氣雷達噪訊擾動 (Radar Noise)
-                if (val > -15) {
-                    val += (Math.random() - 0.5) * 6;
-                }
-            } else {
-                // 風速模式 (徑向速度 Velocity V)
-                // 經典氣旋風場：一側朝向雷達(藍)，一側遠離雷達(紅)，形成強烈的「偶極子」切變 (Couplet)
+            if (mode === 'velocity') {
+                // 徑向速度 V：一側朝雷達(藍)、一側遠離(紅)，形成「偶極子」切變 (Couplet)
+                let val;
                 if (sDist < 100) {
-                    // 以氣旋中心切變風場
                     const rotationSpeed = (tornadoSimulation ? 85 : 45) * Math.exp(-sDist * 0.015);
-                    // 朝向/遠離分量
                     const tangentialX = -Math.sin(sAngle) * rotationSpeed;
                     const tangentialY = Math.cos(sAngle) * rotationSpeed;
-                    
-                    // 投影至雷達徑向 (向外向量)
                     const radialX = dx / (distance || 1);
                     const radialY = dy / (distance || 1);
-                    
                     val = (tangentialX * radialX + tangentialY * radialY);
                     val += (Math.random() - 0.5) * 8; // 亂流擾動
                 } else {
-                    // 背景平流風場 (向東北漂移)
-                    val = 15 * Math.cos(Math.atan2(dy, dx) - 0.7);
+                    val = 15 * Math.cos(Math.atan2(dy, dx) - 0.7); // 背景平流
                 }
+                return val;
             }
 
-            return val;
+            // ===== 雙偏振：回波太弱視為無降水(無資料) =====
+            if (Z < 5) return NaN;
+            // TDS 碎片條件：龍捲進行中且非常接近氣旋中心(碎片被捲上天)
+            const isTDS = tornadoSimulation && sDist < 18;
+
+            if (mode === 'zdr') {
+                // 大雨滴受阻力壓扁 → ZDR 正；冰雹翻滾、碎片隨機 → ≈0 或負
+                let zdr;
+                if (isTDS)           zdr = -0.5 + (Math.random() - 0.5) * 1.0;
+                else if (inHailCore) zdr = 0.2 + (Math.random() - 0.5) * 0.6;
+                else                 zdr = Math.min(4.5, 0.06 * (Z - 5));
+                return zdr + (Math.random() - 0.5) * 0.2;
+            }
+
+            if (mode === 'cc') {
+                // 相關係數：純雨高(≈0.98)、混合相略降、碎片驟降(<0.8) ← TDS 關鍵
+                let cc;
+                if (isTDS)           cc = 0.55 + Math.random() * 0.18;  // 0.55~0.73 驟降
+                else if (inHailCore) cc = 0.90 + Math.random() * 0.04;  // 混合相
+                else if (inHook)     cc = 0.95 + Math.random() * 0.03;
+                else                 cc = 0.975 + Math.random() * 0.02; // 純雨
+                return Math.min(1.0, cc);
+            }
+
+            if (mode === 'kdp') {
+                // 比差分相位 ∝ 液態降雨率；冰雹/碎片(非液態) ≈ 0
+                let kdp;
+                if (isTDS || inHailCore) kdp = 0.1 + Math.random() * 0.2;
+                else                     kdp = Math.max(0, 0.05 * (Z - 15));
+                return kdp + (Math.random() - 0.5) * 0.1;
+            }
+
+            return NaN;
         }
 
         // 高度剖面：讓同一場水平風暴結構往上空延伸時，依高度增強或減弱。
@@ -796,10 +1283,18 @@
         // 立體風暴查詢：RHI 與 Zenith 都呼叫這個函式，確保跟 PPI 共用同一份水平結構與氣旋中心
         function queryStormVolume(x, y, zKm, mode) {
             const center = getStormCenter(); // 只算一次，傳給下面重複利用
-            const horizontal = queryAtmosphereValue(x, y, mode, center);
             const sDist = Math.sqrt((x - center.x) ** 2 + (y - center.y) ** 2);
-            const profile = heightProfile(zKm, sDist, mode);
-            return horizontal * profile;
+
+            // 反射率與速度：水平值 × 高度剖面（強度本就隨高度變化）
+            if (mode === 'reflectivity' || mode === 'velocity') {
+                return queryAtmosphereValue(x, y, mode, center) * heightProfile(zKm, sDist, mode);
+            }
+
+            // 雙偏振 (ZDR/CC/KDP)：是「比值/相關性/相位率」，不可乘高度剖面（會把 CC 誤縮成低相關＝假碎片）。
+            // 改用反射率剖面判斷該高度是否有降水，有降水才回傳該高度的雙偏振值(不縮放)，否則視為無資料。
+            const zHere = queryAtmosphereValue(x, y, 'reflectivity', center) * heightProfile(zKm, sDist, 'reflectivity');
+            if (zHere < 5) return NaN;
+            return queryAtmosphereValue(x, y, mode, center);
         }
 
         function triggerTornado() {
@@ -810,13 +1305,46 @@
             setTimeout(() => playPingSound(620), 240);
         }
 
+        // 各雷達模式的顯示名稱、標籤顏色、科普說明與原理公式
+        const RADAR_MODE_INFO = {
+            reflectivity: { data: 'REFLECTIVITY (Z)', color: 'emerald',
+                desc: '回波強度：顏色越暖代表雨越大、甚至有冰雹。',
+                formula: 'Z 反射率因子（dBZ）。雨滴越多越大，回波越強。' },
+            velocity: { data: 'VELOCITY (V)', color: 'blue',
+                desc: '徑向風速：藍色朝雷達吹來、紅色遠離；一藍一紅並排＝旋轉（中氣旋）。',
+                formula: '多普勒效應：回波頻率偏移 → 視線方向的風速分量。' },
+            zdr: { data: 'DIFFERENTIAL REFLECTIVITY (ZDR)', color: 'emerald',
+                desc: '雨滴形狀：值越大＝雨滴越扁（大雨滴）；接近 0 多為冰雹或被捲起的碎片。',
+                formula: 'ZDR = 10·log₁₀(Z_h / Z_v)（dB）＝水平與垂直回波強度之比。' },
+            cc: { data: 'CORRELATION COEFFICIENT (CC / ρhv)', color: 'amber',
+                desc: '訊號一致性：藍綠＝乾淨的雨；轉紅代表 CC 驟降，多半是非氣象目標——龍捲風碎片！',
+                formula: 'ρhv：水平與垂直回波的相關係數（0~1）。< 0.8 常為非氣象目標。' },
+            kdp: { data: 'SPECIFIC DIFFERENTIAL PHASE (KDP)', color: 'emerald',
+                desc: '降雨強度估計：值越大液態雨越強；不受衰減與校正影響，冰雹/碎片接近 0。',
+                formula: 'KDP = dΦ_DP/dr（°/km）＝差分相位隨距離的變化率。' }
+        };
+
+        // 左側色標對照表設定：vals 由上(高值)到下(低值)建立漸層，ticks 為對應刻度
+        const LEGEND = {
+            reflectivity: { unit: 'dBZ',  vals: [55, 45, 35, 25, 15, 5, -5],   ticks: [50, 40, 30, 20, 10, 0, -10, -20] },
+            velocity:     { unit: 'm/s',  vals: [60, 30, 8, -8, -30, -60],     ticks: [60, 40, 20, 0, -20, -40, -60] },
+            zdr:          { unit: 'dB',   vals: [4, 3, 2, 1, 0.4, 0],          ticks: [5, 4, 3, 2, 1, 0] },
+            cc:           { unit: 'ρhv',  vals: [0.99, 0.95, 0.88, 0.78, 0.6], ticks: [1.0, 0.95, 0.9, 0.8, 0.6] },
+            kdp:          { unit: '°/km', vals: [4, 2.5, 1.5, 0.6, 0.1],       ticks: [5, 3, 2, 1, 0] }
+        };
+
         function updateModeLabel() {
             const radarMode = document.getElementById('radarMode').value;
+            const info = RADAR_MODE_INFO[radarMode] || RADAR_MODE_INFO.reflectivity;
             const modeText = document.getElementById('currentModeText');
             const scanNameMap = { ppi: 'PPI 平面位置掃描', rhi: 'RHI 距離高度掃描', zenith: 'ZENITH 天頂指向' };
-            const dataNameMap = radarMode === 'reflectivity' ? 'REFLECTIVITY (Z)' : 'VELOCITY (V)';
-            modeText.innerText = `${scanNameMap[scanType]} ・ ${dataNameMap}`;
-            modeText.className = radarMode === 'reflectivity' ? "text-xs font-mono text-emerald-400 flex items-center gap-1 z-10 text-right" : "text-xs font-mono text-blue-400 flex items-center gap-1 z-10 text-right";
+            modeText.innerText = `${scanNameMap[scanType]} ・ ${info.data}`;
+            const colorClass = info.color === 'blue' ? 'text-blue-400' : (info.color === 'amber' ? 'text-amber-400' : 'text-emerald-400');
+            modeText.className = `text-xs font-mono ${colorClass} flex items-center gap-1 z-10 text-right`;
+            const d = document.getElementById('radarModeDesc');
+            if (d) d.innerText = info.desc;
+            const f = document.getElementById('radarModeFormula');
+            if (f) f.innerText = info.formula;
         }
 
         function changeRadarMode() {
@@ -888,7 +1416,7 @@
                     const y = 210 + sinA * r;
 
                     const rawVal = queryAtmosphereValue(x, y, radarMode);
-                    const scaledVal = rawVal * stormIntensity;
+                    const scaledVal = (radarMode === 'reflectivity' || radarMode === 'velocity') ? rawVal * stormIntensity : rawVal;
 
                     const color = getRadarColor(scaledVal, radarMode);
                     if (color !== 'rgba(0,0,0,0)') {
@@ -959,37 +1487,34 @@
             ctx.fillText("Madison", 300, 90);
             ctx.fillText("Horseshoe Beach", 280, 380);
 
-            // 11. 復刻 images.jpeg 左側垂直專業 dBZ 色標對照表
+            // 11. 左側垂直色標對照表（依目前雷達模式自動切換色帶與單位）
             const scaleX = 15;
             const scaleY = 60;
             const scaleW = 12;
             const scaleH = 280;
-            
-            // 繪製色帶漸層
-            const dbzGrad = ctx.createLinearGradient(scaleX, scaleY, scaleX, scaleY + scaleH);
-            dbzGrad.addColorStop(0, getRadarColor(55, 'reflectivity'));
-            dbzGrad.addColorStop(0.15, getRadarColor(45, 'reflectivity'));
-            dbzGrad.addColorStop(0.3, getRadarColor(35, 'reflectivity'));
-            dbzGrad.addColorStop(0.45, getRadarColor(25, 'reflectivity'));
-            dbzGrad.addColorStop(0.6, getRadarColor(15, 'reflectivity'));
-            dbzGrad.addColorStop(0.75, getRadarColor(5, 'reflectivity'));
-            dbzGrad.addColorStop(0.9, getRadarColor(-5, 'reflectivity'));
-            dbzGrad.addColorStop(1, 'rgba(23, 37, 84, 0.2)');
 
-            ctx.fillStyle = dbzGrad;
+            const legend = LEGEND[radarMode] || LEGEND.reflectivity;
+            const legendGrad = ctx.createLinearGradient(scaleX, scaleY, scaleX, scaleY + scaleH);
+            legend.vals.forEach((v, i) => {
+                const stop = legend.vals.length === 1 ? 0 : i / (legend.vals.length - 1);
+                let c = getRadarColor(v, radarMode);
+                if (c === 'rgba(0,0,0,0)') c = 'rgba(30,41,59,0.3)';
+                legendGrad.addColorStop(stop, c);
+            });
+            ctx.fillStyle = legendGrad;
             ctx.fillRect(scaleX, scaleY, scaleW, scaleH);
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
             ctx.strokeRect(scaleX, scaleY, scaleW, scaleH);
 
-            // 繪製 dBZ 刻度文字
+            // 刻度文字
             ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
             ctx.font = '8px monospace';
-            const ticks = [50, 40, 30, 20, 10, 0, -10, -20];
-            ticks.forEach((tick, i) => {
-                const tickY = scaleY + (i / (ticks.length - 1)) * scaleH;
+            legend.ticks.forEach((tick, i) => {
+                const tickY = scaleY + (i / (legend.ticks.length - 1)) * scaleH;
                 ctx.fillText(tick, scaleX + scaleW + 4, tickY + 3);
             });
-            ctx.fillText("dBZ", scaleX - 2, scaleY - 6);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+            ctx.fillText(legend.unit, scaleX - 2, scaleY - 6);
 
             // 12. 繪製雷達頂部即時運作數據 (PPI Metadata)
             ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
@@ -1036,7 +1561,7 @@
                 for (let ri = 0; ri <= rowSteps; ri++) {
                     const heightKm = (ri / rowSteps) * maxHeightKm;
                     const rawVal = queryStormVolume(wx, wy, heightKm, radarMode);
-                    const scaledVal = rawVal * stormIntensity;
+                    const scaledVal = (radarMode === 'reflectivity' || radarMode === 'velocity') ? rawVal * stormIntensity : rawVal;
                     const color = getRadarColor(scaledVal, radarMode);
                     if (color !== 'rgba(0,0,0,0)') {
                         rctx.fillStyle = color;
@@ -1116,7 +1641,7 @@
             zenithHistory.forEach((col, idx) => {
                 const px = plotLeft + idx * colW;
                 col.forEach((rawVal, ri) => {
-                    const scaledVal = rawVal * stormIntensity;
+                    const scaledVal = (radarMode === 'reflectivity' || radarMode === 'velocity') ? rawVal * stormIntensity : rawVal;
                     const color = getRadarColor(scaledVal, radarMode);
                     if (color !== 'rgba(0,0,0,0)') {
                         const py = plotTop + plotH - (ri / zenithHeightSteps) * plotH;
@@ -1181,6 +1706,34 @@
 
             document.getElementById('maxDbz').innerText = (maxDbz + Math.random() * 2).toFixed(1) + " dBZ";
             document.getElementById('maxVelocity').innerText = (maxVel + Math.random() * 1.5).toFixed(1) + " m/s";
+
+            // --- TDS 龍捲風碎片自動判讀：在氣旋中心取樣三個雙偏振條件 ---
+            const tdsC = getStormCenter();
+            const tZ = queryAtmosphereValue(tdsC.x, tdsC.y, 'reflectivity');   // 未縮放的真實回波
+            const tZdr = queryAtmosphereValue(tdsC.x, tdsC.y, 'zdr');
+            const tCc = queryAtmosphereValue(tdsC.x, tdsC.y, 'cc');
+            updateTdsPanel(tZ >= 45, !isNaN(tZdr) && Math.abs(tZdr) < 1.0, !isNaN(tCc) && tCc < 0.8);
+        }
+
+        // 更新 TDS 判讀面板（三條件 checklist 與總狀態）
+        function updateTdsPanel(condZ, condZdr, condCc) {
+            const setItem = (cond, ok, label) => {
+                const el = document.querySelector('#tdsChecklist [data-cond="' + cond + '"]');
+                if (!el) return;
+                el.textContent = (ok ? '✓ ' : '◯ ') + label;
+                el.className = ok ? 'text-emerald-400' : 'text-slate-500';
+            };
+            setItem('z', condZ, '高回波 Z≥45');
+            setItem('zdr', condZdr, '低 ZDR≈0');
+            setItem('cc', condCc, '低 CC<0.8');
+            const all = condZ && condZdr && condCc;
+            const s = document.getElementById('tdsStatus');
+            if (s) {
+                s.textContent = all ? '🔴 TDS 確認' : '未偵測';
+                s.className = all
+                    ? 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-red-950 border border-red-500/50 text-red-400 animate-pulse'
+                    : 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400';
+            }
         }
 
         // 主動畫迴圈：用 rAF 時間戳累加 simTime，三種掃描模式共用同一個時鐘與同一場風暴。
@@ -1413,6 +1966,9 @@
         let model3dHotspots = [];
         let model3dRaycaster, model3dMouse;
         let model3dHoveredSprite = null;
+        // 掃描示意動畫：天線方位(az)/仰角(el) 樞紐、波束錐、掃過痕跡
+        let scanAz = null, scanEl = null, scanBeam = null, scanTraces = {};
+        let scanDemoMode = 'static', scanT = 0;
 
         function makeHotspotTexture() {
             const c = document.createElement('canvas');
@@ -1517,48 +2073,75 @@
             group.add(base);
             addHotspot('base', 2.0, 1.5, 0.4);
 
-            // --- 拋物線天線 (LatheGeometry 旋轉成形)：移到基座正前方，緊鄰基座 ---
+            // --- 掃描樞紐：azGroup(方位/水平旋轉) → elGroup(仰角/俯仰)，天線組件掛在 elGroup 上，
+            //     樞紐設在基座頂(2.0, 2.55)，天線零件改用相對座標(扣掉樞紐位置) ---
+            const PVx = 2.0, PVy = 2.55;
+            const azGroup = new THREE.Group(); azGroup.position.set(PVx, PVy, 0); group.add(azGroup);
+            const elGroup = new THREE.Group(); azGroup.add(elGroup);
+            scanAz = azGroup; scanEl = elGroup;
+
+            // 拋物線天線 (LatheGeometry 旋轉成形)
             const dishPoints = [];
             for (let i = 0; i <= 12; i++) {
                 const r = i / 12 * 1.3;
                 dishPoints.push(new THREE.Vector2(r, r * r * 0.42));
             }
-            const dishGeo = new THREE.LatheGeometry(dishPoints, 32);
-            const dish = new THREE.Mesh(dishGeo, dishMat);
-            // 注意：rotation.z 必須是負的，正的話天線凹面會朝向卡車本體(背對觀測方向)，方向就反了
+            const dish = new THREE.Mesh(new THREE.LatheGeometry(dishPoints, 32), dishMat);
+            // rotation.z 為負，讓天線凹面朝向觀測方向(+X)
             dish.rotation.z = -Math.PI / 2;
-            dish.position.set(2.85, 2.55, 0);
-            group.add(dish);
+            dish.position.set(2.85 - PVx, 2.55 - PVy, 0);
+            elGroup.add(dish);
             addHotspot('antenna', 3.1, 3.5, 0);
 
-            // --- 饋源支撐臂：從天線邊緣連到前方饋源點 (天線凹面深度約0.71，饋源在凹面內、接近邊緣處) ---
+            // 饋源支撐臂
             const feedArm = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.18, 0.18), darkMat);
-            feedArm.position.set(3.2, 2.78, 0);
+            feedArm.position.set(3.2 - PVx, 2.78 - PVy, 0);
             feedArm.rotation.z = 0.32;
-            group.add(feedArm);
+            elGroup.add(feedArm);
             addHotspot('feedarm', 3.3, 3.05, 0);
 
-            // --- 導波管 (中央饋源)：位於天線凹面前方的焦點位置 ---
+            // 導波管 (中央饋源)
             const waveguide = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.5, 12), darkMat);
             waveguide.rotation.z = Math.PI / 2;
-            waveguide.position.set(3.45, 2.55, 0);
-            group.add(waveguide);
+            waveguide.position.set(3.45 - PVx, 2.55 - PVy, 0);
+            elGroup.add(waveguide);
             addHotspot('waveguide', 3.45, 2.25, 0);
 
-            // --- 饋源支撐細桿 ---
+            // 饋源支撐細桿
             [-1, 1].forEach(s => {
                 const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.5, 8), darkMat);
-                strut.position.set(3.45, 2.55 + s * 0.4, s * 0.0);
+                strut.position.set(3.45 - PVx, 2.55 - PVy + s * 0.4, 0);
                 strut.rotation.z = s * 0.55;
-                group.add(strut);
+                elGroup.add(strut);
             });
 
-            // --- 觀測方向箭頭：從天線開口前方指向外(跟天線凹面朝向一致) ---
-            const arrowDir = new THREE.Vector3(1, 0, 0);
-            const arrowOrigin = new THREE.Vector3(3.9, 2.55, 0);
-            const arrowHelper = new THREE.ArrowHelper(arrowDir, arrowOrigin, 1.4, 0x60a5fa, 0.3, 0.18);
-            group.add(arrowHelper);
+            // 觀測方向箭頭
+            const arrowHelper = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(3.9 - PVx, 2.55 - PVy, 0), 1.4, 0x60a5fa, 0.3, 0.18);
+            elGroup.add(arrowHelper);
             addHotspot('direction', 5.0, 2.55, 0);
+
+            // --- 半透明雷達波束錐：掛在 elGroup，隨天線俯仰/旋轉一起動 ---
+            const beam = new THREE.Mesh(
+                new THREE.ConeGeometry(0.7, 4, 24, 1, true),
+                new THREE.MeshBasicMaterial({ color: 0x10b981, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false })
+            );
+            beam.rotation.z = Math.PI / 2;             // 圓錐軸轉到 +X：尖端在天線、向外逐漸發散變寬
+            beam.position.set(2.85, 2.55 - PVy, 0);     // 中心在外側，使尖端落在天線(world x≈2.85)、寬端朝外
+            beam.visible = false;
+            elGroup.add(beam);
+            scanBeam = beam;
+
+            // --- 掃過痕跡(半透明面)：PPI 水平圓盤 / RHI 垂直扇形 / ZENITH 立柱 ---
+            const traceMat = () => new THREE.MeshBasicMaterial({ color: 0x10b981, transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false });
+            const ppiDisk = new THREE.Mesh(new THREE.CircleGeometry(4.6, 48), traceMat());
+            ppiDisk.rotation.x = -Math.PI / 2; ppiDisk.position.set(PVx, PVy + 0.3, 0); ppiDisk.visible = false;
+            group.add(ppiDisk);
+            const rhiSector = new THREE.Mesh(new THREE.CircleGeometry(4.6, 32, 0, Math.PI / 2), traceMat());
+            rhiSector.visible = false; azGroup.add(rhiSector); // 隨方位轉
+            const zenCol = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 4.6, 20, 1, true), traceMat());
+            zenCol.position.set(PVx, PVy + 2.3, 0); zenCol.visible = false;
+            group.add(zenCol);
+            scanTraces = { ppi: ppiDisk, rhi: rhiSector, zenith: zenCol };
 
             // --- 穩定支腿 (四個液壓腿) ---
             const legPositions = [[-2.6, -0.9], [-2.6, 0.9], [2.6, -0.9], [2.6, 0.9]];
@@ -1578,6 +2161,55 @@
         function showPartInfo(part) {
             document.getElementById('partInfoTitle').innerText = part.name;
             document.getElementById('partInfoDesc').innerText = part.desc;
+        }
+
+        // 切換 3D 掃描示意模式（與上方雷達控制台獨立）
+        const SCAN_CAPTIONS = {
+            static: '靜態檢視：天線歸位，可點綠色光點看零件說明。',
+            ppi: 'PPI：天線維持固定低仰角、水平 360° 旋轉掃描（綠色水平圓盤＝掃過範圍）。',
+            rhi: 'RHI：天線固定方位、上下俯仰掃描（綠色垂直扇形＝掃過剖面）。',
+            zenith: 'ZENITH 天頂指向：天線直指正上方、觀測頭頂上空（綠色立柱）。'
+        };
+        function setScanMode(mode) {
+            scanDemoMode = mode;
+            scanT = 0;
+            const idle = 'px-2 py-1 rounded text-[11px] font-mono bg-slate-950 border border-slate-800 text-slate-400 hover:text-emerald-400 hover:border-emerald-500/50 transition-all';
+            const active = 'px-2 py-1 rounded text-[11px] font-mono bg-emerald-900/30 border border-emerald-500 text-emerald-400 transition-all';
+            ['static', 'ppi', 'rhi', 'zenith'].forEach(k => { const b = document.getElementById('scanModeBtn-' + k); if (b) b.className = (k === mode ? active : idle); });
+            const cap = document.getElementById('scanModeCaption'); if (cap) cap.innerText = SCAN_CAPTIONS[mode] || '';
+            if (typeof playPingSound === 'function') playPingSound(mode === 'static' ? 520 : (mode === 'ppi' ? 600 : (mode === 'rhi' ? 680 : 760)));
+        }
+
+        // 每幀更新天線掃描動作、波束與痕跡的顯示
+        function updateScanDemo() {
+            if (!scanAz || !scanEl) return;
+            scanT += 0.016;
+            const m = scanDemoMode;
+            const lerp = (cur, t, k) => cur + (t - cur) * k;
+            if (scanBeam) scanBeam.visible = (m !== 'static');
+            if (scanTraces.ppi) scanTraces.ppi.visible = (m === 'ppi');
+            if (scanTraces.rhi) scanTraces.rhi.visible = (m === 'rhi');
+            if (scanTraces.zenith) scanTraces.zenith.visible = (m === 'zenith');
+
+            // 天線會動的零件熱點只在靜態檢視顯示，避免掃描時綠點與天線錯位漂浮
+            const moving = (m !== 'static');
+            for (let i = 0; i < model3dHotspots.length; i++) {
+                const s = model3dHotspots[i];
+                if (s.userData && ['antenna', 'feedarm', 'waveguide', 'direction'].indexOf(s.userData.key) !== -1) s.visible = !moving;
+            }
+
+            if (m === 'ppi') {                       // 固定低仰角、持續水平旋轉
+                scanEl.rotation.z = lerp(scanEl.rotation.z, 0.14, 0.1);
+                scanAz.rotation.y += 0.02;
+            } else if (m === 'rhi') {                 // 固定方位、上下俯仰擺動 0~~85°
+                scanEl.rotation.z = (Math.sin(scanT * 1.4) * 0.5 + 0.5) * (Math.PI * 0.47);
+            } else if (m === 'zenith') {              // 直指天頂(90°)，緩慢自轉
+                scanEl.rotation.z = lerp(scanEl.rotation.z, Math.PI / 2, 0.08);
+                scanAz.rotation.y += 0.008;
+            } else {                                  // static：天線歸位
+                scanEl.rotation.z = lerp(scanEl.rotation.z, 0, 0.1);
+                scanAz.rotation.y = lerp(scanAz.rotation.y, 0, 0.1);
+            }
         }
 
         function initModel3D() {
@@ -1644,7 +2276,7 @@
                 model3dMouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 
                 model3dRaycaster.setFromCamera(model3dMouse, model3dCamera);
-                const hits = model3dRaycaster.intersectObjects(model3dHotspots);
+                const hits = model3dRaycaster.intersectObjects(model3dHotspots).filter(h => h.object.visible); // 略過隱藏熱點(Three 的 raycaster 不會自動跳過 visible=false)
 
                 if (hits.length > 0) {
                     const sprite = hits[0].object;
@@ -1673,7 +2305,7 @@
                 model3dMouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
                 model3dMouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
                 model3dRaycaster.setFromCamera(model3dMouse, model3dCamera);
-                const hits = model3dRaycaster.intersectObjects(model3dHotspots);
+                const hits = model3dRaycaster.intersectObjects(model3dHotspots).filter(h => h.object.visible); // 略過隱藏熱點(Three 的 raycaster 不會自動跳過 visible=false)
                 if (hits.length > 0) {
                     showPartInfo(hits[0].object.userData);
                     playPingSound(750);
@@ -1695,6 +2327,7 @@
                 if (!model3dRunning) return; // 暫停時直接中止迴圈，不再排下一幀
                 requestAnimationFrame(animateModel3D);
                 model3dControls.update();
+                updateScanDemo();
                 model3dRenderer.render(model3dScene, model3dCamera);
             }
             startModel3DLoop = function () {
@@ -1754,7 +2387,571 @@
                     if (model3dInited && typeof startModel3DLoop === 'function') startModel3DLoop();
                 }
             });
+
+            // 捲動進場動畫：區塊滑入視窗即淡入上移，只觸發一次後即停止觀察。
+            const revealEls = document.querySelectorAll('.reveal');
+            if ('IntersectionObserver' in window && revealEls.length) {
+                const revealObserver = new IntersectionObserver((entries, obs) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('is-visible');
+                            obs.unobserve(entry.target);
+                        }
+                    });
+                }, { threshold: 0.12 });
+                revealEls.forEach(el => revealObserver.observe(el));
+            } else {
+                revealEls.forEach(el => el.classList.add('is-visible'));
+            }
         }
+
+        // ==========================================
+        // P2：速度退疊 (Nyquist Folding) 互動模組
+        // ==========================================
+        ;(function () {
+            const raw = document.getElementById('dealiasRaw');
+            const tru = document.getElementById('dealiasTrue');
+            if (!raw || !tru) return;
+            const rctx = raw.getContext('2d');
+            const tctx = tru.getContext('2d');
+            const W = 360, H = 300;
+            const vx = 180, vy = 125;          // 中氣旋(渦旋)中心
+            const radarX = 180, radarY = 295;  // 雷達(觀測者)在底部中央
+            const Rcore = 32, Vmax = 65;       // Rankine 渦旋：核心半徑與最大切向風速
+            const lambda = 0.032;              // X 波段波長 (m)
+
+            // Rankine 組合渦旋的水平風向量
+            function windAt(px, py) {
+                const dxv = px - vx, dyv = py - vy;
+                const rr = Math.hypot(dxv, dyv) || 1e-3;
+                const vt = rr < Rcore ? Vmax * (rr / Rcore) : Vmax * Rcore / rr;
+                // 逆時針(北半球中氣旋)切向方向
+                return { ux: -dyv / rr * vt, uy: dxv / rr * vt };
+            }
+            // 把風投影到雷達視線方向 → 徑向速度
+            function radialVel(px, py) {
+                const rdx = px - radarX, rdy = py - radarY;
+                const rd = Math.hypot(rdx, rdy) || 1e-3;
+                const w = windAt(px, py);
+                return (w.ux * rdx + w.uy * rdy) / rd;
+            }
+            // 折疊：把真實速度折進 ±Vnyq
+            function fold(v, vnyq) {
+                return (((v + vnyq) % (2 * vnyq)) + 2 * vnyq) % (2 * vnyq) - vnyq;
+            }
+            // 徑向速度配色：藍=朝向、紅=遠離，強度依 |v|/scale
+            function velColor(v, scale) {
+                const r = Math.max(-1, Math.min(1, v / scale));
+                if (Math.abs(r) < 0.05) return 'rgba(30,41,59,0.55)';
+                if (r < 0) return 'rgba(56,130,246,' + (0.35 + Math.abs(r) * 0.6) + ')';
+                return 'rgba(239,68,68,' + (0.35 + r * 0.6) + ')';
+            }
+            function render() {
+                const vnyq = +document.getElementById('nyquistSlider').value;
+                document.getElementById('nyquistVal').textContent = vnyq;
+                document.getElementById('prfVal').textContent = Math.round(4 * vnyq / lambda) + ' Hz';
+                document.getElementById('trueMaxVel').textContent = Vmax;
+
+                rctx.fillStyle = '#080d1a'; rctx.fillRect(0, 0, W, H);
+                tctx.fillStyle = '#080d1a'; tctx.fillRect(0, 0, W, H);
+
+                const step = 5;
+                let folded = 0, total = 0;
+                for (let py = 0; py < H; py += step) {
+                    for (let px = 0; px < W; px += step) {
+                        const v = radialVel(px, py);
+                        total++;
+                        if (Math.abs(v) > vnyq) folded++;
+                        rctx.fillStyle = velColor(fold(v, vnyq), vnyq); // 折疊後依 ±Vnyq 著色
+                        rctx.fillRect(px, py, step, step);
+                        tctx.fillStyle = velColor(v, Vmax);             // 真實依 ±Vmax 著色
+                        tctx.fillRect(px, py, step, step);
+                    }
+                }
+                document.getElementById('foldPct').textContent = Math.round(100 * folded / total) + '%';
+
+                // 標記中氣旋中心與雷達位置
+                [rctx, tctx].forEach(c => {
+                    c.fillStyle = '#67e8f9';
+                    c.beginPath(); c.arc(vx, vy, 3, 0, Math.PI * 2); c.fill();
+                    c.fillStyle = 'rgba(255,255,255,0.6)'; c.font = '9px monospace';
+                    c.fillText('中氣旋', vx + 6, vy + 3);
+                    c.fillStyle = '#10b981'; c.fillRect(radarX - 3, radarY - 8, 6, 6);
+                    c.fillText('DOW', radarX + 6, radarY - 3);
+                });
+            }
+            document.getElementById('nyquistSlider').addEventListener('input', render);
+            render();
+        })();
+
+        // ==========================================
+        // P3：雷達系統訊號鏈方塊圖（可調參數互動）
+        // ==========================================
+        ;(function () {
+            const cv = document.getElementById('sigCanvas');
+            if (!cv) return;
+            const g = cv.getContext('2d');
+            const CW = 600, CH = 220, MID = CH / 2, X0 = 50, X1 = CW - 12, W = X1 - X0;
+            let current = 'tx';
+
+            const BLOCKS = [
+                { key: 'tx', name: '發射機', icon: 'fa-bolt', draw: 'tx',
+                  desc: '振盪源（磁控管／速調管或固態元件）產生高功率微波脈衝，以固定的脈衝重複頻率（PRF）發射出去。',
+                  formula: '脈衝列：間隔 PRT = 1/PRF。占空比低、峰值功率極高。' },
+                { key: 'wg', name: '波導', icon: 'fa-grip-lines', draw: 'carrier',
+                  desc: '金屬波導以特定模態（如 TE10）把微波能量低損耗地從發射機送到天線。',
+                  formula: '載波 E(t) = A·cos(2π f_c t)，f_c 為射頻載波頻率。' },
+                { key: 'circ', name: '環行器/收發開關', icon: 'fa-arrows-spin', draw: 'circ',
+                  desc: '環行器（T-R 開關）讓同一支天線分時收發：發射時把功率導向天線、接收時把微弱回波導向接收機，並保護接收機不被大功率燒毀。',
+                  formula: '單向導通 Port1→2→3，提供收發隔離度。' },
+                { key: 'ant', name: '天線', icon: 'fa-satellite-dish', draw: 'beam',
+                  desc: '拋物面天線把能量聚成很窄的波束；口徑越大、波束越窄、角解析度越好。',
+                  formula: '波束寬 θ ≈ 1.22·λ/D（D 為口徑直徑）。' },
+                { key: 'echo', name: '回波', icon: 'fa-wave-square', draw: 'echo',
+                  desc: '電波打到雨滴或碎片後散射回來，能量衰減到極微弱（可達 −110 dBm），且混有雜訊。',
+                  formula: '雷達方程式：P_r ∝ P_t·G²·λ²·σ / R⁴。' },
+                { key: 'lna', name: '低雜訊放大器 LNA', icon: 'fa-up-right-and-down-left-from-center', draw: 'lna',
+                  desc: '接收的第一級放大，決定整體雜訊指數；在訊號還很弱時就放大，盡量不引入額外雜訊。',
+                  formula: '增益 G(dB)=10·log₁₀(P_out/P_in)；雜訊指數 NF 越低越好。' },
+                { key: 'mix', name: '混頻器', icon: 'fa-blender', draw: 'mixer',
+                  desc: '把射頻 RF 與本地振盪 LO 相乘，產生較低的中頻 IF，方便後級處理——這就是超外差接收。',
+                  formula: 'cos(ω_RF t)·cos(ω_LO t) → ½[cos((ω_RF−ω_LO)t)+cos((ω_RF+ω_LO)t)]，取差頻 IF。' },
+                { key: 'if', name: '中頻放大', icon: 'fa-sliders', draw: 'ifamp',
+                  desc: '在固定的中頻做主要的放大與帶通濾波，提供大部分增益與選擇性。',
+                  formula: 'f_IF = |f_RF − f_LO|，固定不隨 RF 變動。' },
+                { key: 'iq', name: 'I/Q 解調', icon: 'fa-square-root-variable', draw: 'iq',
+                  desc: '把訊號分成同相（I）與正交（Q）兩路、相差 90°，完整保留振幅與相位——這是多普勒測速的關鍵。',
+                  formula: 'I=A·cos φ、Q=A·sin φ；振幅 A=√(I²+Q²)、相位 φ=atan2(Q,I)。' },
+                { key: 'adc', name: 'ADC 取樣', icon: 'fa-chart-column', draw: 'adc',
+                  desc: '以取樣率 fs 把連續訊號取成離散數位樣本。fs 不足會發生「混疊」——這正是 P2 速度折疊的根源。',
+                  formula: '取樣定理：fs ≥ 2·f_max；否則混疊，與多普勒速度折疊同源。' },
+                { key: 'dsp', name: '訊號處理', icon: 'fa-microchip', draw: 'dsp',
+                  desc: '用脈衝對／FFT 估出功率譜，導出反射率 Z、徑向速度 V、譜寬 W，再進一步算雙偏振 ZDR/CC/KDP。',
+                  formula: 'Z←回波功率、V←相位變化率(多普勒)、W←譜寬。' }
+            ];
+
+            function P() {
+                return {
+                    prf: +document.getElementById('sigPRF').value,
+                    fs: +document.getElementById('sigFs').value,
+                    f: +document.getElementById('sigF').value
+                };
+            }
+            function clearBg() { g.fillStyle = '#080d1a'; g.fillRect(0, 0, CW, CH); }
+            function axis() { g.strokeStyle = 'rgba(255,255,255,0.12)'; g.lineWidth = 1; g.beginPath(); g.moveTo(X0, MID); g.lineTo(X1, MID); g.stroke(); }
+            function note(t, x, y, color) { g.fillStyle = color || 'rgba(255,255,255,0.7)'; g.font = '11px monospace'; g.fillText(t, x, y); }
+            function sine(cycles, amp, color, phase) {
+                g.strokeStyle = color; g.lineWidth = 2; g.beginPath();
+                for (let i = 0; i <= W; i++) {
+                    const x = X0 + i, y = MID - amp * Math.sin(2 * Math.PI * cycles * i / W + (phase || 0));
+                    i === 0 ? g.moveTo(x, y) : g.lineTo(x, y);
+                }
+                g.stroke();
+            }
+
+            function drawTx() {
+                clearBg(); axis(); const { prf } = P();
+                const n = Math.max(2, Math.round(prf / 300)), sp = W / n;
+                g.strokeStyle = '#10b981'; g.lineWidth = 2; g.beginPath(); g.moveTo(X0, MID);
+                for (let i = 0; i < n; i++) { const px = X0 + i * sp + sp * 0.15, w = sp * 0.2; g.lineTo(px, MID); g.lineTo(px, MID - 70); g.lineTo(px + w, MID - 70); g.lineTo(px + w, MID); }
+                g.lineTo(X1, MID); g.stroke();
+                note('脈衝列　PRT = 1/PRF　(' + prf + ' Hz)', X0, 24, '#34d399'); note('時間 →', X1 - 48, MID + 18);
+            }
+            function drawCarrier() { clearBg(); axis(); sine(18, 60, '#10b981'); note('射頻載波 f_c（連續正弦波）', X0, 24, '#34d399'); }
+            function drawCirc() {
+                clearBg(); const cx = CW / 2, cy = MID, R = 52;
+                g.strokeStyle = '#10b981'; g.lineWidth = 2; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke();
+                g.beginPath(); g.arc(cx, cy, R - 14, -0.4, 4.0); g.stroke();
+                const ah = R - 14; g.beginPath(); g.moveTo(cx + ah * Math.cos(4.0), cy + ah * Math.sin(4.0)); g.lineTo(cx + ah * Math.cos(4.0) - 6, cy + ah * Math.sin(4.0) - 2); g.lineTo(cx + ah * Math.cos(4.0) + 2, cy + ah * Math.sin(4.0) - 8); g.fillStyle = '#10b981'; g.fill();
+                note('發射機 →', cx - R - 76, cy + 4, '#94a3b8'); note('→ 天線', cx + R + 12, cy - 28, '#94a3b8'); note('→ 接收機', cx + R + 12, cy + 36, '#94a3b8');
+                note('單向導通：發射→天線、天線回波→接收機（隔離保護）', X0, 200, '#64748b');
+            }
+            function drawBeam() {
+                clearBg(); const ox = X0 + 6, oy = MID;
+                g.fillStyle = 'rgba(16,185,129,0.18)'; g.strokeStyle = 'rgba(16,185,129,0.85)'; g.lineWidth = 2;
+                g.beginPath(); g.moveTo(ox, oy); g.lineTo(X1, oy - 14); g.lineTo(X1, oy + 14); g.closePath(); g.fill(); g.stroke();
+                g.strokeStyle = '#94a3b8'; g.beginPath(); g.arc(ox - 4, oy, 18, -1.2, 1.2); g.stroke();
+                note('窄波束　θ ≈ 1.22 λ/D（口徑越大越窄）', X0 + 30, 24, '#34d399');
+            }
+            function drawEcho() {
+                clearBg(); axis(); g.strokeStyle = 'rgba(56,130,246,0.9)'; g.lineWidth = 1.5; g.beginPath();
+                for (let i = 0; i <= W; i++) { const x = X0 + i, y = MID - (8 * Math.sin(2 * Math.PI * 10 * i / W) + (Math.random() - 0.5) * 10); i === 0 ? g.moveTo(x, y) : g.lineTo(x, y); }
+                g.stroke(); note('回波：極微弱且混有雜訊（可達 −110 dBm）', X0, 24, '#60a5fa');
+            }
+            function drawLna() {
+                clearBg(); axis(); g.strokeStyle = 'rgba(52,211,153,0.95)'; g.lineWidth = 2; g.beginPath();
+                for (let i = 0; i <= W; i++) { const x = X0 + i, y = MID - (55 * Math.sin(2 * Math.PI * 10 * i / W) + (Math.random() - 0.5) * 8); i === 0 ? g.moveTo(x, y) : g.lineTo(x, y); }
+                g.stroke(); note('LNA 放大後：同一訊號、振幅大增', X0, 24, '#34d399');
+            }
+            function drawMixer() {
+                clearBg(); g.strokeStyle = 'rgba(255,255,255,0.12)'; g.beginPath(); g.moveTo(X0, CH - 30); g.lineTo(X1, CH - 30); g.stroke();
+                const peak = (x, h, label, color) => { g.strokeStyle = color; g.lineWidth = 3; g.beginPath(); g.moveTo(x, CH - 30); g.lineTo(x, CH - 30 - h); g.stroke(); g.fillStyle = color; g.font = '10px monospace'; g.fillText(label, x - 16, CH - 30 - h - 6); };
+                peak(X0 + 50, 120, 'IF 差頻', '#10b981'); peak(X0 + 320, 90, 'LO', '#f59e0b'); peak(X0 + 390, 90, 'RF', '#60a5fa'); peak(X0 + 470, 55, '和頻(濾掉)', '#64748b');
+                note('混頻：RF × LO → 取低的差頻 IF（超外差）', X0, 24, '#34d399'); note('頻率 →', X1 - 48, CH - 14);
+            }
+            function drawIfamp() { clearBg(); axis(); sine(7, 65, '#10b981'); note('中頻 IF：固定頻率，主要增益與帶通濾波', X0, 24, '#34d399'); }
+            function drawIq() {
+                clearBg(); axis(); sine(5, 45, '#10b981', 0); sine(5, 45, '#f59e0b', Math.PI / 2);
+                note('I（同相）', X0, 24, '#34d399'); note('Q（正交，差 90°）', X0 + 80, 24, '#f59e0b'); note('A=√(I²+Q²)、φ=atan2(Q,I)', X0, 200, '#64748b');
+            }
+            function drawAdc() {
+                clearBg(); axis(); const { fs, f } = P();
+                sine(f, 55, 'rgba(100,116,139,0.7)');
+                g.fillStyle = '#10b981';
+                for (let k = 0; k <= fs; k++) { const i = k * W / fs, x = X0 + i, y = MID - 55 * Math.sin(2 * Math.PI * f * i / W); g.beginPath(); g.arc(x, y, 3, 0, Math.PI * 2); g.fill(); }
+                if (fs < 2 * f) { const fa = Math.abs(f - fs * Math.round(f / fs)); sine(fa, 55, 'rgba(239,68,68,0.95)'); note('⚠ 混疊！表面頻率 fa=' + fa.toFixed(1) + '（紅線）', X0, 200, '#f87171'); }
+                else { note('取樣足夠：fs ≥ 2f，可完整還原', X0, 200, '#34d399'); }
+                note('真實 f=' + f + '、fs=' + fs + '（綠點為取樣）', X0, 24, '#34d399');
+            }
+            function drawDsp() {
+                clearBg(); g.strokeStyle = 'rgba(255,255,255,0.12)'; g.beginPath(); g.moveTo(X0, CH - 30); g.lineTo(X1, CH - 30); g.stroke();
+                const cxp = W * 0.42, sw = 55; g.strokeStyle = '#10b981'; g.lineWidth = 2; g.beginPath();
+                for (let i = 0; i <= W; i++) { const x = X0 + i, h = 130 * Math.exp(-Math.pow((i - cxp) / sw, 2)), y = CH - 30 - h; i === 0 ? g.moveTo(x, CH - 30) : g.lineTo(x, y); }
+                g.stroke();
+                note('功率譜（脈衝對／FFT）→ 導出氣象量', X0, 24, '#34d399');
+                note('面積 → Z（反射率）', X0, 110, '#94a3b8'); note('峰位 → V（多普勒速度）', X0, 130, '#94a3b8'); note('寬度 → W（譜寬）', X0, 150, '#94a3b8');
+            }
+
+            const DRAW = { tx: drawTx, carrier: drawCarrier, circ: drawCirc, beam: drawBeam, echo: drawEcho, lna: drawLna, mixer: drawMixer, ifamp: drawIfamp, iq: drawIq, adc: drawAdc, dsp: drawDsp };
+            const idleCls = 'px-2 py-1 bg-slate-950 border border-slate-800 hover:border-emerald-500/50 rounded text-[10px] font-mono text-slate-300 hover:text-emerald-400 transition-all whitespace-nowrap';
+            const activeCls = 'px-2 py-1 bg-emerald-900/30 border border-emerald-500 rounded text-[10px] font-mono text-emerald-400 transition-all whitespace-nowrap';
+
+            function render(key) {
+                current = key;
+                const b = BLOCKS.find(x => x.key === key) || BLOCKS[0];
+                document.getElementById('sigTitle').textContent = b.name;
+                document.getElementById('sigDesc').textContent = b.desc;
+                document.getElementById('sigFormula').textContent = b.formula;
+                BLOCKS.forEach(x => { const el = document.getElementById('sigBtn-' + x.key); if (el) el.className = (x.key === key ? activeCls : idleCls); });
+                (DRAW[b.draw] || drawTx)();
+            }
+
+            // 生成方塊與箭頭
+            const wrap = document.getElementById('sigBlocks');
+            BLOCKS.forEach((b, idx) => {
+                const btn = document.createElement('button');
+                btn.id = 'sigBtn-' + b.key; btn.className = idleCls;
+                btn.innerHTML = '<i class="fa-solid ' + b.icon + '"></i> ' + b.name;
+                btn.onclick = () => { render(b.key); if (typeof playPingSound === 'function') playPingSound(620 + idx * 30); };
+                wrap.appendChild(btn);
+                if (idx < BLOCKS.length - 1) { const ar = document.createElement('span'); ar.className = 'text-slate-600 text-xs'; ar.textContent = '→'; wrap.appendChild(ar); }
+            });
+            ['sigPRF', 'sigFs', 'sigF'].forEach(id => document.getElementById(id).addEventListener('input', () => {
+                document.getElementById('sigPRFval').textContent = document.getElementById('sigPRF').value;
+                document.getElementById('sigFsval').textContent = document.getElementById('sigFs').value;
+                document.getElementById('sigFval').textContent = document.getElementById('sigF').value;
+                (DRAW[(BLOCKS.find(b => b.key === current) || BLOCKS[0]).draw] || drawTx)();
+            }));
+            render('tx');
+        })();
+
+        // ==========================================
+        // 🧭 新手導覽彈窗開關
+        // ==========================================
+        ;(function () {
+            const modal = document.getElementById('tourModal');
+            if (!modal) return;
+            let lastFocus = null;
+            function open() {
+                lastFocus = document.activeElement;
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                document.body.style.overflow = 'hidden';
+                const c = document.getElementById('closeTourBtn');
+                if (c) c.focus();
+                if (typeof playPingSound === 'function') playPingSound(680);
+            }
+            function close() {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                document.body.style.overflow = '';
+                if (lastFocus && lastFocus.focus) lastFocus.focus();
+            }
+            const ob = document.getElementById('openTourBtn');
+            if (ob) ob.addEventListener('click', open);
+            ['closeTourBtn', 'closeTourBtn2'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('click', close);
+            });
+            // 點背景關閉
+            modal.addEventListener('click', e => { if (e.target === modal) close(); });
+            // ESC 關閉
+            document.addEventListener('keydown', e => { if (e.key === 'Escape' && !modal.classList.contains('hidden')) close(); });
+        })();
+
+        // ==========================================
+        // P4：雙都卜勒風場合成互動
+        // ==========================================
+        ;(function () {
+            const cv = document.getElementById('ddCanvas');
+            if (!cv) return;
+            const g = cv.getContext('2d');
+            const CW = 620, CH = 440;
+            const sx = 310, sy = 165, Rc = 60, Vmax = 42;   // 風暴(渦旋)中心與強度
+            const radars = [{ x: 150, y: 400 }, { x: 470, y: 400 }, { x: 310, y: 425 }];
+            let nRadars = 2;
+            let dragIdx = -1;
+
+            // 真實風場(canvas 座標：Rankine 渦旋 + 平流)
+            function windTrue(px, py) {
+                const dx = px - sx, dy = py - sy, r = Math.hypot(dx, dy) || 1;
+                const vt = r < Rc ? Vmax * r / Rc : Vmax * Rc / r;
+                return { u: -dy / r * vt + 8, v: dx / r * vt + 5 };
+            }
+            // 某雷達在點 p 的視線單位向量
+            function beamUnit(ri, px, py) {
+                const dx = px - radars[ri].x, dy = py - radars[ri].y, r = Math.hypot(dx, dy) || 1;
+                return { x: dx / r, y: dy / r };
+            }
+            // 用 nRadars 台雷達的視線分量，最小平方還原 (u,v)，並回傳幾何行列式(品質)
+            function synth(px, py) {
+                let a11 = 0, a12 = 0, a22 = 0, b1 = 0, b2 = 0;
+                const t = windTrue(px, py);
+                for (let i = 0; i < nRadars; i++) {
+                    const e = beamUnit(i, px, py);
+                    const vr = t.u * e.x + t.v * e.y + (Math.random() - 0.5) * 2.0; // 視線分量 + 量測雜訊
+                    a11 += e.x * e.x; a12 += e.x * e.y; a22 += e.y * e.y;
+                    b1 += e.x * vr; b2 += e.y * vr;
+                }
+                const det = a11 * a22 - a12 * a12;
+                if (Math.abs(det) < 0.04) return { u: 0, v: 0, q: 0, ok: false };
+                return { u: (a22 * b1 - a12 * b2) / det, v: (-a12 * b1 + a11 * b2) / det, q: Math.min(1, det / 0.5), ok: true };
+            }
+            function qColor(q, a) { a = a || 0.95; return q > 0.6 ? 'rgba(16,185,129,' + a + ')' : q > 0.3 ? 'rgba(234,179,8,' + a + ')' : 'rgba(239,68,68,' + a + ')'; }
+            function arrow(x, y, u, v, sc, color, lw) {
+                const ex = x + u * sc, ey = y + v * sc;
+                g.strokeStyle = color; g.lineWidth = lw || 1.6; g.beginPath(); g.moveTo(x, y); g.lineTo(ex, ey); g.stroke();
+                const ang = Math.atan2(ey - y, ex - x), hl = 5;
+                g.beginPath(); g.moveTo(ex, ey); g.lineTo(ex - hl * Math.cos(ang - 0.4), ey - hl * Math.sin(ang - 0.4)); g.lineTo(ex - hl * Math.cos(ang + 0.4), ey - hl * Math.sin(ang + 0.4)); g.closePath(); g.fillStyle = color; g.fill();
+            }
+
+            function render() {
+                g.fillStyle = '#080d1a'; g.fillRect(0, 0, CW, CH);
+                // 風暴回波示意(淡)
+                const rg = g.createRadialGradient(sx, sy, 5, sx, sy, 110);
+                rg.addColorStop(0, 'rgba(239,68,68,0.28)'); rg.addColorStop(0.5, 'rgba(234,179,8,0.16)'); rg.addColorStop(1, 'rgba(16,185,129,0)');
+                g.fillStyle = rg; g.beginPath(); g.arc(sx, sy, 110, 0, Math.PI * 2); g.fill();
+                g.fillStyle = 'rgba(255,255,255,0.5)'; g.font = '10px monospace'; g.fillText('超級胞', sx - 16, sy - 116);
+
+                // 風場格點：灰色真實 + 彩色合成
+                const sc = 0.7, step = 46;
+                let qSum = 0, qN = 0;
+                for (let y = 36; y < CH - 16; y += step) {
+                    for (let x = 36; x < CW - 16; x += step) {
+                        const t = windTrue(x, y);
+                        arrow(x, y, t.u, t.v, sc, 'rgba(148,163,184,0.32)', 1); // 真實(灰)
+                        const s = synth(x, y);
+                        if (s.ok) {
+                            const uu = Math.max(-60, Math.min(60, s.u)), vv = Math.max(-60, Math.min(60, s.v));
+                            arrow(x, y, uu, vv, sc, qColor(s.q), 1.7);
+                            qSum += s.q; qN++;
+                        }
+                    }
+                }
+
+                // 雷達標記與波束連線
+                for (let i = 0; i < nRadars; i++) {
+                    const r = radars[i];
+                    g.strokeStyle = 'rgba(16,185,129,0.35)'; g.setLineDash([4, 4]); g.lineWidth = 1;
+                    g.beginPath(); g.moveTo(r.x, r.y); g.lineTo(sx, sy); g.stroke(); g.setLineDash([]);
+                    g.fillStyle = '#10b981'; g.fillRect(r.x - 6, r.y - 6, 12, 12);
+                    g.strokeStyle = '#063'; g.strokeRect(r.x - 6, r.y - 6, 12, 12);
+                    g.fillStyle = '#a7f3d0'; g.font = 'bold 10px monospace'; g.fillText('DOW' + (i + 1), r.x - 12, r.y + 22);
+                }
+
+                // 讀數：風暴處交角與平均品質
+                const angEl = document.getElementById('ddAngle'), qEl = document.getElementById('ddQuality'), vEl = document.getElementById('ddVerdict');
+                if (nRadars < 2) {
+                    angEl.textContent = '—'; qEl.textContent = '單台無法合成'; qEl.className = 'text-red-400';
+                    vEl.textContent = '只有一台雷達：僅能得到視線方向的徑向速度，無法還原真正的風向。這就是為什麼需要第二台、甚至整個車隊。';
+                } else {
+                    // 平均「成對波束」交角(取對 90° 的接近度)：2 台=1 對、3 台=3 對，較能代表整體幾何
+                    let angSum = 0, angCnt = 0;
+                    for (let i = 0; i < nRadars; i++) for (let j = i + 1; j < nRadars; j++) {
+                        const a = beamUnit(i, sx, sy), b = beamUnit(j, sx, sy);
+                        let pa = Math.acos(Math.max(-1, Math.min(1, a.x * b.x + a.y * b.y))) * 180 / Math.PI;
+                        if (pa > 90) pa = 180 - pa;
+                        angSum += pa; angCnt++;
+                    }
+                    const ang = angCnt ? angSum / angCnt : 0;
+                    const avgQ = qN ? qSum / qN : 0;
+                    angEl.textContent = ang.toFixed(0) + '°';
+                    qEl.textContent = Math.round(avgQ * 100) + '%';
+                    qEl.className = avgQ > 0.6 ? 'text-emerald-400' : avgQ > 0.3 ? 'text-amber-400' : 'text-red-400';
+                    vEl.textContent = avgQ > 0.6
+                        ? '幾何良好：兩束在風暴處交角夠大，合成風場貼近真實。實戰中 DOW 車隊正是這樣分開部署、交叉掃描。'
+                        : avgQ > 0.3
+                        ? '幾何普通：交角偏小，部分區域合成開始失真。試著把 DOW 拉開、讓交角更接近 90°。'
+                        : '幾何很差：雷達幾乎共線，視線分量重複、解不穩定，合成風場大幅偏離真實。';
+                }
+            }
+
+            // 拖曳 DOW
+            function toCanvas(e) { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * CW / r.width, y: (e.clientY - r.top) * CH / r.height }; }
+            cv.addEventListener('pointerdown', e => {
+                const p = toCanvas(e);
+                for (let i = 0; i < nRadars; i++) { if (Math.hypot(p.x - radars[i].x, p.y - radars[i].y) < 16) { dragIdx = i; cv.setPointerCapture(e.pointerId); break; } }
+            });
+            cv.addEventListener('pointermove', e => {
+                if (dragIdx < 0) return;
+                const p = toCanvas(e);
+                radars[dragIdx].x = Math.max(10, Math.min(CW - 10, p.x));
+                radars[dragIdx].y = Math.max(10, Math.min(CH - 10, p.y));
+                render();
+            });
+            cv.addEventListener('pointerup', () => { dragIdx = -1; });
+            cv.addEventListener('pointercancel', () => { dragIdx = -1; });
+
+            // 台數切換
+            document.querySelectorAll('#ddCountBtns .dd-count').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    nRadars = +btn.getAttribute('data-n');
+                    document.querySelectorAll('#ddCountBtns .dd-count').forEach(b => {
+                        const on = b === btn;
+                        b.className = 'dd-count py-1.5 rounded text-xs font-mono font-bold ' + (on ? 'bg-emerald-900/30 border border-emerald-500 text-emerald-400' : 'bg-slate-900 border border-slate-800 text-slate-400');
+                    });
+                    if (typeof playPingSound === 'function') playPingSound(560 + nRadars * 40);
+                    render();
+                });
+            });
+            render();
+        })();
+
+        // ==========================================
+        // P5：部署決策模擬（單一情境追風小遊戲）
+        // ==========================================
+        ;(function () {
+            const cv = document.getElementById('deployCanvas');
+            if (!cv) return;
+            const g = cv.getContext('2d');
+            const CW = 640, CH = 460;
+            const S0 = { x: 80, y: 100 };
+            const dlen = Math.hypot(1, 0.6), ux = 1 / dlen, uy = 0.6 / dlen; // 風暴移動方向單位向量
+            const Tmax = 480, corridorHalf = 20, ideal = 60;
+            const endP = { x: S0.x + ux * Tmax, y: S0.y + uy * Tmax };
+            const roads = [
+                [{ x: 0, y: 300 }, { x: 640, y: 332 }],
+                [{ x: 210, y: 0 }, { x: 270, y: 460 }],
+                [{ x: 0, y: 130 }, { x: 640, y: 96 }]
+            ];
+            let dow = { x: 520, y: 300 }, az = 225, phase = 'setup', dragging = false;
+            let closest = Infinity, closestMeso = null, hit = false, rafId = null;
+
+            const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+            function distToSeg(p, a, b) {
+                const dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy || 1;
+                let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / L2; t = Math.max(0, Math.min(1, t));
+                return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+            }
+            const nearRoad = p => roads.some(r => distToSeg(p, r[0], r[1]) < 16);
+            function perpDist(p, a, b) {
+                const dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy || 1;
+                const t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / L2;
+                return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+            }
+            const mesoAt = t => ({ x: S0.x + ux * t, y: S0.y + uy * t });
+            const compassAz = (f, t) => (Math.atan2(t.x - f.x, -(t.y - f.y)) * 180 / Math.PI + 360) % 360;
+            const angDiff = (a, b) => { let d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; };
+
+            function drawScene(mesoT) {
+                g.fillStyle = '#0a0f1c'; g.fillRect(0, 0, CW, CH);
+                // 道路
+                g.strokeStyle = '#3e2c1c'; g.lineWidth = 3;
+                roads.forEach(r => { g.beginPath(); g.moveTo(r[0].x, r[0].y); g.lineTo(r[1].x, r[1].y); g.stroke(); });
+                // 龍捲路徑帶
+                g.strokeStyle = 'rgba(239,68,68,0.14)'; g.lineWidth = corridorHalf * 2; g.lineCap = 'round';
+                g.beginPath(); g.moveTo(S0.x, S0.y); g.lineTo(endP.x, endP.y); g.stroke(); g.lineCap = 'butt';
+                g.strokeStyle = 'rgba(239,68,68,0.5)'; g.lineWidth = 1; g.setLineDash([5, 5]);
+                g.beginPath(); g.moveTo(S0.x, S0.y); g.lineTo(endP.x, endP.y); g.stroke(); g.setLineDash([]);
+                g.fillStyle = 'rgba(248,113,113,0.8)'; g.font = '10px monospace'; g.fillText('預測路徑', endP.x - 60, endP.y + 16);
+
+                // 超級胞 + 中氣旋
+                const m = mesoAt(mesoT);
+                const rg = g.createRadialGradient(m.x, m.y, 4, m.x, m.y, 70);
+                rg.addColorStop(0, 'rgba(236,72,153,0.5)'); rg.addColorStop(0.4, 'rgba(239,68,68,0.3)'); rg.addColorStop(0.7, 'rgba(234,179,8,0.16)'); rg.addColorStop(1, 'rgba(16,185,129,0)');
+                g.fillStyle = rg; g.beginPath(); g.arc(m.x, m.y, 70, 0, Math.PI * 2); g.fill();
+                g.fillStyle = '#fff'; g.font = 'bold 9px monospace'; g.fillText('🌪 龍捲', m.x - 16, m.y - 4);
+
+                // DOW + 天線指向
+                const rad = az * Math.PI / 180, bx = dow.x + Math.sin(rad) * 120, by = dow.y - Math.cos(rad) * 120;
+                g.strokeStyle = 'rgba(96,165,250,0.85)'; g.lineWidth = 2; g.beginPath(); g.moveTo(dow.x, dow.y); g.lineTo(bx, by); g.stroke();
+                g.fillStyle = nearRoad(dow) ? '#10b981' : '#f59e0b';
+                g.fillRect(dow.x - 7, dow.y - 7, 14, 14); g.strokeStyle = '#022'; g.strokeRect(dow.x - 7, dow.y - 7, 14, 14);
+                g.fillStyle = '#a7f3d0'; g.font = 'bold 10px monospace'; g.fillText('DOW', dow.x - 11, dow.y + 24);
+
+                if (phase === 'done' && hit) {
+                    g.strokeStyle = '#ef4444'; g.lineWidth = 3;
+                    g.beginPath(); g.moveTo(dow.x - 11, dow.y - 11); g.lineTo(dow.x + 11, dow.y + 11); g.moveTo(dow.x + 11, dow.y - 11); g.lineTo(dow.x - 11, dow.y + 11); g.stroke();
+                }
+            }
+
+            function finish() {
+                phase = 'done';
+                const dataQ = Math.exp(-Math.pow((closest - ideal) / 42, 2));
+                const tdir = closestMeso ? compassAz(dow, closestMeso) : az;
+                const aimErr = angDiff(az, tdir);
+                const aimF = Math.max(0, Math.cos(aimErr * Math.PI / 180));
+                const dataScore = Math.round(100 * dataQ * (0.55 + 0.45 * aimF));
+                const perp = perpDist(dow, S0, endP);
+                let safety;
+                if (hit) safety = 0;
+                else { safety = Math.round(Math.max(0, Math.min(100, (perp - corridorHalf) / 0.9))); if (nearRoad(dow)) safety = Math.min(100, safety + 10); }
+                const overall = hit ? Math.round(dataScore * 0.15) : Math.round(0.5 * dataScore + 0.5 * safety);
+
+                const setTxt = (id, v, cls) => { const e = document.getElementById(id); e.textContent = v; if (cls) e.className = cls; };
+                setTxt('deployData', dataScore + ' / 100', dataScore > 60 ? 'text-emerald-400' : dataScore > 30 ? 'text-amber-400' : 'text-red-400');
+                setTxt('deploySafety', hit ? '0（被命中）' : safety + ' / 100', safety > 60 ? 'text-emerald-400' : safety > 30 ? 'text-amber-400' : 'text-red-400');
+                setTxt('deployOverall', overall + ' / 100', overall > 70 ? 'text-emerald-400 font-bold' : overall > 45 ? 'text-amber-400 font-bold' : 'text-red-400 font-bold');
+
+                const hints = [];
+                if (closest > 110) hints.push('離風暴太遠、解析度不足');
+                if (closest < 35) hints.push('貼得太近、危險且波束打不開');
+                if (aimErr > 45) hints.push('天線沒對準中氣旋');
+                if (!hit && perp - corridorHalf < 30) hints.push('離路徑帶太近、撤離餘裕小');
+                let verdict;
+                if (hit) verdict = '🔴 車輛被龍捲直接命中！再漂亮的資料也沒意義——安全永遠第一。把 DOW 停到紅色路徑帶之外再試一次。';
+                else if (overall >= 80) verdict = '🏆 漂亮！距離抓在甜蜜帶、安全離開路徑、天線也對準了——教科書級部署，這就是 DOW 團隊的日常。';
+                else if (overall >= 55) verdict = '👍 不錯的部署，但還能更好：' + (hints.join('、') || '微調距離與方位') + '。';
+                else verdict = '⚠️ 這次有明顯問題：' + (hints.join('、') || '重新評估距離與安全') + '。';
+                document.getElementById('deployVerdict').textContent = verdict;
+                if (typeof playPingSound === 'function') playPingSound(hit ? 200 : (overall > 70 ? 880 : 500));
+                drawScene(Tmax);
+            }
+
+            function run() {
+                if (phase === 'running') return;
+                phase = 'running'; closest = Infinity; closestMeso = null; hit = false;
+                const start = performance.now(), dur = 2600;
+                function loop(now) {
+                    const prog = Math.min(1, (now - start) / dur), t = prog * Tmax, m = mesoAt(t);
+                    const d = dist(dow, m);
+                    if (d < closest) { closest = d; closestMeso = m; }
+                    if (d < corridorHalf + 4) hit = true;
+                    drawScene(t);
+                    if (prog < 1) rafId = requestAnimationFrame(loop); else finish();
+                }
+                rafId = requestAnimationFrame(loop);
+            }
+            function reset() {
+                if (rafId) cancelAnimationFrame(rafId);
+                phase = 'setup'; closest = Infinity; hit = false;
+                ['deployData', 'deploySafety'].forEach(id => { document.getElementById(id).textContent = '—'; document.getElementById(id).className = 'text-slate-300'; });
+                const o = document.getElementById('deployOverall'); o.textContent = '—'; o.className = 'text-emerald-400 font-bold';
+                document.getElementById('deployVerdict').textContent = '調整好位置與方位，按「開始觀測」看追風教官的講評。';
+                drawScene(0);
+            }
+
+            // 拖曳 DOW
+            function toCanvas(e) { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * CW / r.width, y: (e.clientY - r.top) * CH / r.height }; }
+            cv.addEventListener('pointerdown', e => { if (phase === 'running') return; const p = toCanvas(e); if (dist(p, dow) < 18) { dragging = true; cv.setPointerCapture(e.pointerId); } });
+            cv.addEventListener('pointermove', e => { if (!dragging) return; const p = toCanvas(e); dow.x = Math.max(8, Math.min(CW - 8, p.x)); dow.y = Math.max(8, Math.min(CH - 8, p.y)); drawScene(phase === 'done' ? Tmax : 0); });
+            cv.addEventListener('pointerup', () => { dragging = false; });
+            cv.addEventListener('pointercancel', () => { dragging = false; });
+            document.getElementById('deployAz').addEventListener('input', function () { az = +this.value; document.getElementById('deployAzVal').textContent = az; drawScene(phase === 'done' ? Tmax : 0); });
+            document.getElementById('deployRun').addEventListener('click', run);
+            document.getElementById('deployReset').addEventListener('click', reset);
+            drawScene(0);
+        })();
     </script>
 </body>
 </html>
