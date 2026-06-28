@@ -1087,10 +1087,18 @@
         // 立體風暴查詢：RHI 與 Zenith 都呼叫這個函式，確保跟 PPI 共用同一份水平結構與氣旋中心
         function queryStormVolume(x, y, zKm, mode) {
             const center = getStormCenter(); // 只算一次，傳給下面重複利用
-            const horizontal = queryAtmosphereValue(x, y, mode, center);
             const sDist = Math.sqrt((x - center.x) ** 2 + (y - center.y) ** 2);
-            const profile = heightProfile(zKm, sDist, mode);
-            return horizontal * profile;
+
+            // 反射率與速度：水平值 × 高度剖面（強度本就隨高度變化）
+            if (mode === 'reflectivity' || mode === 'velocity') {
+                return queryAtmosphereValue(x, y, mode, center) * heightProfile(zKm, sDist, mode);
+            }
+
+            // 雙偏振 (ZDR/CC/KDP)：是「比值/相關性/相位率」，不可乘高度剖面（會把 CC 誤縮成低相關＝假碎片）。
+            // 改用反射率剖面判斷該高度是否有降水，有降水才回傳該高度的雙偏振值(不縮放)，否則視為無資料。
+            const zHere = queryAtmosphereValue(x, y, 'reflectivity', center) * heightProfile(zKm, sDist, 'reflectivity');
+            if (zHere < 5) return NaN;
+            return queryAtmosphereValue(x, y, mode, center);
         }
 
         function triggerTornado() {
@@ -2447,9 +2455,15 @@
                     angEl.textContent = '—'; qEl.textContent = '單台無法合成'; qEl.className = 'text-red-400';
                     vEl.textContent = '只有一台雷達：僅能得到視線方向的徑向速度，無法還原真正的風向。這就是為什麼需要第二台、甚至整個車隊。';
                 } else {
-                    const e1 = beamUnit(0, sx, sy), e2 = beamUnit(1, sx, sy);
-                    let ang = Math.acos(Math.max(-1, Math.min(1, e1.x * e2.x + e1.y * e2.y))) * 180 / Math.PI;
-                    if (ang > 90) ang = 180 - ang; // 取與 90° 的接近度
+                    // 平均「成對波束」交角(取對 90° 的接近度)：2 台=1 對、3 台=3 對，較能代表整體幾何
+                    let angSum = 0, angCnt = 0;
+                    for (let i = 0; i < nRadars; i++) for (let j = i + 1; j < nRadars; j++) {
+                        const a = beamUnit(i, sx, sy), b = beamUnit(j, sx, sy);
+                        let pa = Math.acos(Math.max(-1, Math.min(1, a.x * b.x + a.y * b.y))) * 180 / Math.PI;
+                        if (pa > 90) pa = 180 - pa;
+                        angSum += pa; angCnt++;
+                    }
+                    const ang = angCnt ? angSum / angCnt : 0;
                     const avgQ = qN ? qSum / qN : 0;
                     angEl.textContent = ang.toFixed(0) + '°';
                     qEl.textContent = Math.round(avgQ * 100) + '%';
