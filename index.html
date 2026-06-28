@@ -180,6 +180,9 @@
             </div>
             <!-- 控制按鈕組 -->
             <div class="flex items-center gap-2">
+                <button id="openTourBtn" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 border border-emerald-500 rounded-md text-xs flex items-center gap-2 text-slate-950 font-bold transition-all">
+                    <i class="fa-solid fa-compass"></i> 新手導覽
+                </button>
                 <a href="#model3d-section" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-md text-xs flex items-center gap-2 text-emerald-300 transition-all">
                     <i class="fa-solid fa-cube"></i> 3D 結構模型
                 </a>
@@ -192,6 +195,76 @@
             </div>
         </div>
     </header>
+
+    <!-- 🧭 新手導覽彈窗（給完全外行的人：這個網站在講什麼？） -->
+    <div id="tourModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4 bg-black/80 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="tourTitle">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[88vh] flex flex-col">
+            <!-- 標題列 -->
+            <div class="flex items-center gap-3 border-b border-slate-800 p-5 shrink-0">
+                <div class="w-10 h-10 rounded-lg bg-emerald-600 flex items-center justify-center text-slate-950 shrink-0"><i class="fa-solid fa-compass text-xl"></i></div>
+                <div class="flex-grow">
+                    <h2 id="tourTitle" class="text-lg font-black text-white">新手導覽：這個網站在講什麼？</h2>
+                    <p class="text-xs text-slate-400">完全不懂雷達也沒關係，3 分鐘看懂這台追龍捲風的卡車</p>
+                </div>
+                <button id="closeTourBtn" aria-label="關閉導覽" class="w-9 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 flex items-center justify-center shrink-0 transition-all"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <!-- 內容（可捲動） -->
+            <div class="overflow-y-auto p-5 space-y-5 text-sm text-slate-300 leading-relaxed">
+
+                <div class="bg-emerald-950/30 border-l-2 border-emerald-500 rounded-r-lg p-3">
+                    <p class="text-emerald-200">一句話：<span class="font-bold">這是一輛專門追龍捲風的雷達卡車（Doppler on Wheels, 簡稱 DOW）。本網站把科學家用它研究風暴的各種技術，做成你可以動手玩的互動展示——不需要任何背景知識。</span></p>
+                </div>
+
+                <div>
+                    <h3 class="text-white font-bold mb-1.5 flex items-center gap-2"><span class="text-emerald-400">①</span> 為什麼需要這台車？</h3>
+                    <p>龍捲風生成又快又小，固定在山頂或機場的雷達站離太遠、看不清楚。DOW 把雷達縮小裝上卡車，科學家能開著它衝到風暴旁 1～2 公里拍高解析度資料——就像把固定相機換成跟著運動員跑的攝影師。目的：在龍捲風形成的前幾分鐘預測它、提早發警報救人。</p>
+                </div>
+
+                <div>
+                    <h3 class="text-white font-bold mb-2 flex items-center gap-2"><span class="text-emerald-400">②</span> 網站裡每一塊在玩什麼？</h3>
+                    <div class="space-y-2.5">
+                        <div class="bg-slate-950 border border-slate-800 rounded-lg p-3">
+                            <p class="font-bold text-emerald-300"><i class="fa-solid fa-satellite-dish"></i> 雷達控制台（彩色圓形圖）</p>
+                            <p class="text-[13px]">雷達轉一圈畫出的圖。顏色＝雨多大（綠小雨、黃中雨、紅強降雨），中間亮白塊就是模擬的超級胞風暴。可調雷達仰角看上下掃的差別。</p>
+                        </div>
+                        <div class="bg-slate-950 border border-slate-800 rounded-lg p-3">
+                            <p class="font-bold text-emerald-300"><i class="fa-solid fa-layer-group"></i> 雙偏振雷達（ZDR／CC／KDP）</p>
+                            <p class="text-[13px]">同時發橫向＋直向兩道電波，就能知道雨滴形狀。打開龍捲風後圖上會出現一塊特殊區域，代表「龍捲風正把地面的東西捲上天」——這是確認龍捲風存在最直接的雷達證據。</p>
+                        </div>
+                        <div class="bg-slate-950 border border-slate-800 rounded-lg p-3">
+                            <p class="font-bold text-emerald-300"><i class="fa-solid fa-wave-square"></i> 速度退疊（Nyquist）</p>
+                            <p class="text-[13px]">雷達測風速有「天花板」，太快的風會被誤判成反方向的微風（速度折疊）。自己拖滑桿製造這個錯誤、再一鍵還原，看科學家每次都要做的修正。</p>
+                        </div>
+                        <div class="bg-slate-950 border border-slate-800 rounded-lg p-3">
+                            <p class="font-bold text-emerald-300"><i class="fa-solid fa-microchip"></i> 雷達訊號鏈</p>
+                            <p class="text-[13px]">電波從打出去到變成螢幕上的彩色點，要經過 11 個電子元件。點每個方塊看它的作用，還能調發射功率和天線大小看探測距離怎麼變。（想深入可展開「完整深入解說」）</p>
+                        </div>
+                        <div class="bg-slate-950 border border-slate-800 rounded-lg p-3">
+                            <p class="font-bold text-emerald-300"><i class="fa-solid fa-arrows-left-right-to-line"></i> 雙都卜勒合成</p>
+                            <p class="text-[13px]">一台車只看得到「風往我這／離我」的方向。兩三台 DOW 從不同角度同時掃，數學交叉就能還原完整風向。拖動雷達車讓夾角接近 90° 最準。</p>
+                        </div>
+                        <div class="bg-slate-950 border border-slate-800 rounded-lg p-3">
+                            <p class="font-bold text-emerald-300"><i class="fa-solid fa-gamepad"></i> 部署決策遊戲</p>
+                            <p class="text-[13px]">你當追風指揮官，把車停到好位置、對準風暴、按開始觀測，看你的決定得幾分——太遠資料糊、太近會被命中。反映真實出任務前的風險評估。</p>
+                        </div>
+                        <div class="bg-slate-950 border border-slate-800 rounded-lg p-3">
+                            <p class="font-bold text-emerald-300"><i class="fa-solid fa-cube"></i> 3D 卡車模型＋掃描動畫</p>
+                            <p class="text-[13px]">用滑鼠轉動的 3D 卡車，點零件看功能。切換 PPI（水平轉一圈）／RHI（固定方向上下搖）／ZENITH（對準正上方慢轉）看天線實際的掃描方式。</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-white font-bold mb-1.5 flex items-center gap-2"><span class="text-emerald-400">③</span> 一個生活化的比喻</h3>
+                    <p>都卜勒效應＝救護車靠近時音調變高、遠離時變低。雷達就是用回波電波的「音調變化」算出風往哪吹、多快——只是它用的是電磁波，不是聲音。</p>
+                </div>
+            </div>
+            <!-- 底部 -->
+            <div class="border-t border-slate-800 p-4 shrink-0 flex justify-end">
+                <button id="closeTourBtn2" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-sm rounded-lg transition-all flex items-center gap-2"><i class="fa-solid fa-rocket"></i> 開始探索</button>
+            </div>
+        </div>
+    </div>
 
     <!-- 模組子導覽（頁面變長後快速跳轉） -->
     <nav class="sticky top-[60px] sm:top-[68px] z-40 bg-slate-950/85 backdrop-blur border-b border-slate-800/80 overflow-x-auto">
@@ -612,6 +685,120 @@
                     </details>
                 </div>
             </div>
+
+            <!-- 🔬 P3 深入解說：一個電波的完整旅程（完整 11 級拆解） -->
+            <details class="mt-5 group">
+                <summary class="cursor-pointer select-none flex items-center gap-2 text-sm font-bold text-emerald-400 hover:text-emerald-300 bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 transition-all">
+                    <i class="fa-solid fa-flask"></i> 完整深入解說：一個電波的完整旅程（11 級拆解＋雷達方程式）
+                    <i class="fa-solid fa-chevron-down ml-auto text-xs text-slate-500 group-open:rotate-180 transition-transform"></i>
+                </summary>
+                <div class="mt-3 bg-slate-950 border border-slate-800 rounded-lg p-5 text-sm text-slate-300 leading-relaxed space-y-5">
+
+                    <div>
+                        <p class="text-slate-400">雷達的核心邏輯很簡單：<span class="text-emerald-300">發射一道電磁波 → 打到目標（雨滴／冰雹／碎片）→ 部分能量反彈回來 → 量回波的時間差（得到距離）與頻率差（得到速度）</span>。但「發射」到「接收」之間隔著 11 個關鍵環節，每個都在做不同的物理工作。整條鏈分兩段：<span class="text-amber-300">發射路徑</span>把能量送出去，<span class="text-sky-300">接收路徑</span>把微弱回波還原成資料。</p>
+                    </div>
+
+                    <!-- 發射路徑 -->
+                    <h4 class="text-amber-300 font-black flex items-center gap-2 border-b border-slate-800 pb-1.5"><i class="fa-solid fa-arrow-up-from-bracket"></i> 發射路徑（Transmit Path）</h4>
+
+                    <div class="space-y-4 pl-1">
+                        <div>
+                            <p class="font-bold text-white">1. 發射機 Transmitter（磁控管／速調管）— 系統的心臟</p>
+                            <p>電子在強磁場中以諧振腔固有頻率振盪，輻射出高功率微波脈衝。DOW 工作在 <span class="text-emerald-300">C 波段（5.5 GHz, λ≈5 cm）</span>或 <span class="text-emerald-300">X 波段（9.4 GHz, λ≈3 cm）</span>。峰值功率 250 kW～1 MW、脈衝寬 0.5～2 µs、PRF 1,000～5,000 Hz，工作週期 &lt; 0.1%——大部分時間其實在「聽」。</p>
+                            <p class="text-[12px] text-slate-400 mt-1 font-mono pl-3 border-l border-slate-700">為何功率這麼高？回波功率與距離的<span class="text-amber-300">四次方</span>成反比（P_r ∝ 1/r⁴），100 km 外的雨滴反彈回來的能量比發射時弱了 10¹⁰ 倍以上，必須先轟出極高功率。</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">2. 波導管 Waveguide</p>
+                            <p>頻率太高無法用普通電線傳輸，改用空心金屬管。微波以 <span class="text-emerald-300">TE₁₀ 模態</span>在管內反射前進，幾乎無損。有截止頻率 f_c = c/(2a)（a 為管寬），天然就是帶通濾波器。彎折處需精確弧度、法蘭接頭要密封防洩漏，而<span class="text-emerald-300">旋轉關節（Rotary Joint）</span>讓波導在天線旋轉時仍保持電氣連接——這是 DOW 的關鍵機械挑戰。</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">3. 環形器 Circulator — 讓收發共用一支天線</p>
+                            <p>三端口鐵氧體器件，利用<span class="text-emerald-300">法拉第旋轉效應</span>讓微波只能單向循環：發射機→天線→接收機→終端吸收，隔離度 20～40 dB。</p>
+                            <p class="text-[12px] text-slate-400 mt-1 font-mono pl-3 border-l border-slate-700">為何重要？發射峰值 250 kW，接收機只能承受幾 mW。沒有環形器保護，每發一次脈衝就燒毀接收機。</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">4. 天線 Antenna（拋物面反射器）</p>
+                            <p>直徑 2～2.5 m 的拋物面碟。饋源在焦點，碟面把球面波整形成很窄的<span class="text-emerald-300">筆狀波束（Pencil Beam）</span>。波束寬 θ ≈ 1.2λ/D ≈ <span class="text-emerald-300">1°</span>、增益 ≈ 40 dBi、旁瓣 &lt; −25 dB。波束 1° 意味著 100 km 外照亮範圍僅 1.7 km 寬——這就是 DOW 能看清龍捲風精細結構的原因。現代 DOW 饋源有正交雙埠，<span class="text-emerald-300">同時發射水平(H)與垂直(V)極化</span>，這是雙偏振 ZDR/CC/KDP 的硬體基礎。</p>
+                        </div>
+                    </div>
+
+                    <!-- 接收路徑 -->
+                    <h4 class="text-sky-300 font-black flex items-center gap-2 border-b border-slate-800 pb-1.5"><i class="fa-solid fa-arrow-down-to-bracket"></i> 接收路徑（Receive Path）</h4>
+
+                    <div class="space-y-4 pl-1">
+                        <div>
+                            <p class="font-bold text-white">5. 低雜訊放大器 LNA</p>
+                            <p>回波抵達時功率僅 10⁻¹³～10⁻¹⁵ 瓦，比一顆細胞的能量還小。LNA 在<span class="text-emerald-300">不加入太多雜訊</span>的前提下放大 20～30 dB。關鍵指標雜訊指數 NF = 10·log₁₀(SNR_in/SNR_out)，優秀者 &lt; 1.5 dB。依 <span class="text-emerald-300">Friis 公式</span>，信號越早放大、後級雜訊影響越小，因此 LNA 緊貼天線背面，用 GaAs／GaN HEMT 電晶體，部分系統甚至以液氮冷卻到 77 K。</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">6. 混頻器 Mixer ＋ 本地振盪器 LO（超外差）</p>
+                            <p>微波頻率太高，後端無法直接處理。混頻器把 RF 與 LO 相乘搬到較低的<span class="text-emerald-300">中頻 IF</span>：f_IF = f_RF − f_LO（例：5500 − 5430 = 70 MHz）。都卜勒位移 f_d = 2v/λ 完整保留在中頻裡（50 m/s 風速、C 波段約 18 kHz）。</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">7. 中頻放大器 IF Amplifier</p>
+                            <p>在固定的 70 MHz 做主要增益與帶通濾波。這一級可做<span class="text-emerald-300">匹配濾波（Matched Filter）</span>：響應與發射脈衝時間反轉，使輸出信噪比最大化——理論上 SNR 只取決於脈衝能量，不取決於形狀，讓工程師可用更複雜的波形（如線性調頻 LFM）換取靈活性。</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">8. I/Q 解調器 — 同時拿到振幅與相位</p>
+                            <p>把中頻分兩路，分別乘 cos 與 sin（差 90°），得到同相 I 與正交 Q，組成複數向量 <span class="text-emerald-300">s̃ = I + jQ = A·e^(jφ)</span>。振幅 A = √(I²+Q²) → 回波強度；相位 φ = atan2(Q,I) → 含速度資訊。相鄰脈衝相位差 Δφ 給出徑向速度 v_r = λ·Δφ/(4πT)。雙偏振有兩套 I/Q，輸出 I_H, Q_H, I_V, Q_V 四路資料流。</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">9. ADC 類比數位轉換器</p>
+                            <p>把 I、Q 取樣量化成數字。採樣率需滿足 fs ≥ 2×頻寬（奈奎斯特），解析度 12～16 位元，動態範圍需涵蓋毛毛雨到大冰雹（&gt; 80 dB）。每個取樣點對應一個<span class="text-emerald-300">距離庫（Range Gate）</span>：Δr = c·Δt/2，2 MHz 取樣 → 距離解析度 75 m。</p>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">10. DSP 數位信號處理 — 真正的雷達智慧</p>
+                            <p>對每個距離庫的 I/Q 序列做<span class="text-emerald-300">脈衝對處理（Pulse Pair）</span>：</p>
+                            <ul class="text-[12px] text-slate-400 mt-1.5 space-y-1 font-mono pl-3 border-l border-slate-700">
+                                <li>反射率 <span class="text-emerald-300">Z</span> ← 回波功率（×r² 補距離衰減）</li>
+                                <li>平均徑向速度 <span class="text-emerald-300">V̄</span> = λ/(4πT)·arg(Σ s̃ₙ*·s̃ₙ₊₁)</li>
+                                <li>譜寬 <span class="text-emerald-300">W</span> ← 氣流紊亂程度（龍捲風極高）</li>
+                                <li>ZDR = 10·log(Z_H/Z_V)、ρhv(CC) = |⟨S_H S_V*⟩|/√(Z_H Z_V)、KDP = d(φ_DP)/dr ÷ 2</li>
+                                <li>速度去折疊：偵測相鄰像素跳變超過 Nyquist 處，±2·V_nyq 修正（即 P2 展示的算法）</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">11. 顯示／儲存 Display &amp; Archive</p>
+                            <p>輸出 <span class="text-emerald-300">PPI</span>（360° 平面位置圖）、<span class="text-emerald-300">RHI</span>（固定方位的距離–高度剖面），並把每個距離庫的 Z、V、W、ZDR、CC、KDP 存成 <span class="text-emerald-300">NetCDF</span> 科學標準格式供事後分析。</p>
+                        </div>
+                    </div>
+
+                    <!-- 流程圖 -->
+                    <div>
+                        <h4 class="text-emerald-300 font-black flex items-center gap-2 border-b border-slate-800 pb-1.5 mb-2"><i class="fa-solid fa-diagram-project"></i> 完整訊號流程</h4>
+                        <pre class="text-[10px] sm:text-[11px] text-emerald-300/90 font-mono bg-black border border-slate-800 rounded-lg p-3 overflow-x-auto leading-snug">磁控管發射器
+   │ 脈衝微波（250 kW，1 µs）
+   ▼
+波導管 ── 低損耗傳輸
+   ▼
+環形器 ──────────────────────────────┐
+   │ 發射出去                        │ 接收回來
+   ▼                                 │
+拋物面天線 ═══ 電波傳播 ═══ 目標（雨／冰雹）
+                                     │
+                                  環形器
+                                     │
+                                  LNA（+25 dB，NF &lt; 1.5 dB）
+                                     │
+                                  混頻器（5.5 GHz → 70 MHz）
+                                     │
+                                  IF 放大 ＋ 匹配濾波
+                                     │
+                                  I/Q 解調（→ 複數向量）
+                                     │
+                                  ADC（75 m 距離庫）
+                                     │
+                                  DSP（Z, V, W, ZDR, CC, KDP）
+                                     │
+                                  PPI／RHI 顯示 ＋ NetCDF 存檔</pre>
+                    </div>
+
+                    <!-- 一句話總結 -->
+                    <div class="bg-emerald-950/30 border-l-2 border-emerald-500 rounded-r-lg p-3">
+                        <p class="text-emerald-200"><span class="font-bold">一句話總結：</span>雷達車發出一道瞬間功率相當於 25 萬個 1000 瓦燈泡同時亮起的電磁脈衝，100 km 外的雨滴只反彈回其中極微小的一部分，雷達車的電子系統在幾毫秒內從這個微弱到難以想像的信號裡，精確算出每個地點的降雨強度和風速——上面 11 個環節就是這個奇蹟發生的過程。</p>
+                    </div>
+                </div>
+            </details>
         </div>
     </section>
 
@@ -2456,6 +2643,40 @@
                 (DRAW[(BLOCKS.find(b => b.key === current) || BLOCKS[0]).draw] || drawTx)();
             }));
             render('tx');
+        })();
+
+        // ==========================================
+        // 🧭 新手導覽彈窗開關
+        // ==========================================
+        ;(function () {
+            const modal = document.getElementById('tourModal');
+            if (!modal) return;
+            let lastFocus = null;
+            function open() {
+                lastFocus = document.activeElement;
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                document.body.style.overflow = 'hidden';
+                const c = document.getElementById('closeTourBtn');
+                if (c) c.focus();
+                if (typeof playPingSound === 'function') playPingSound(680);
+            }
+            function close() {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                document.body.style.overflow = '';
+                if (lastFocus && lastFocus.focus) lastFocus.focus();
+            }
+            const ob = document.getElementById('openTourBtn');
+            if (ob) ob.addEventListener('click', open);
+            ['closeTourBtn', 'closeTourBtn2'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('click', close);
+            });
+            // 點背景關閉
+            modal.addEventListener('click', e => { if (e.target === modal) close(); });
+            // ESC 關閉
+            document.addEventListener('keydown', e => { if (e.key === 'Escape' && !modal.classList.contains('hidden')) close(); });
         })();
 
         // ==========================================
