@@ -704,21 +704,21 @@
                     <div class="space-y-4 pl-1">
                         <div>
                             <p class="font-bold text-white">1. 發射機 Transmitter（磁控管／速調管）— 系統的心臟</p>
-                            <p>電子在強磁場中以諧振腔固有頻率振盪，輻射出高功率微波脈衝。DOW 工作在 <span class="text-emerald-300">C 波段（5.5 GHz, λ≈5 cm）</span>或 <span class="text-emerald-300">X 波段（9.4 GHz, λ≈3 cm）</span>。峰值功率 250 kW～1 MW、脈衝寬 0.5～2 µs、PRF 1,000～5,000 Hz，工作週期 &lt; 0.1%——大部分時間其實在「聽」。</p>
-                            <p class="text-[12px] text-slate-400 mt-1 font-mono pl-3 border-l border-slate-700">為何功率這麼高？回波功率與距離的<span class="text-amber-300">四次方</span>成反比（P_r ∝ 1/r⁴），100 km 外的雨滴反彈回來的能量比發射時弱了 10¹⁰ 倍以上，必須先轟出極高功率。</p>
+                            <p>電子在強磁場中以諧振腔固有頻率振盪，輻射出高功率微波脈衝。DOW 工作在 <span class="text-emerald-300">C 波段（5.5 GHz, λ≈5 cm）</span>或 <span class="text-emerald-300">X 波段（9.4 GHz, λ≈3 cm）</span>。峰值功率 250 kW～1 MW、脈衝寬 0.5～2 µs、PRF 1,000～5,000 Hz，工作週期（占空比＝脈衝寬×PRF）通常僅約 0.1～1%——大部分時間其實在「聽」。</p>
+                            <p class="text-[12px] text-slate-400 mt-1 font-mono pl-3 border-l border-slate-700">為何功率這麼高？對<span class="text-amber-300">單一點目標</span>，回波功率與距離四次方成反比（P_r ∝ 1/r⁴）；對<span class="text-amber-300">充滿波束的氣象目標</span>（雨區），因取樣體積隨 r² 增大、抵銷一部分衰減，實際為 1/r²（這也是後面 DSP 要「×r²」還原反射率的原因）。無論哪種，100 km 外的回波都已弱了十幾個數量級，必須先轟出極高功率。</p>
                         </div>
                         <div>
                             <p class="font-bold text-white">2. 波導管 Waveguide</p>
-                            <p>頻率太高無法用普通電線傳輸，改用空心金屬管。微波以 <span class="text-emerald-300">TE₁₀ 模態</span>在管內反射前進，幾乎無損。有截止頻率 f_c = c/(2a)（a 為管寬），天然就是帶通濾波器。彎折處需精確弧度、法蘭接頭要密封防洩漏，而<span class="text-emerald-300">旋轉關節（Rotary Joint）</span>讓波導在天線旋轉時仍保持電氣連接——這是 DOW 的關鍵機械挑戰。</p>
+                            <p>頻率太高無法用普通電線傳輸，改用空心金屬管。微波以 <span class="text-emerald-300">TE₁₀ 模態</span>在管內反射前進，幾乎無損。有截止頻率 f_c = c/(2a)（a 為管寬），低於它無法傳播，天然就是高通濾波器（實務上工作在單模頻段內）。彎折處需精確弧度、法蘭接頭要密封防洩漏，而<span class="text-emerald-300">旋轉關節（Rotary Joint）</span>讓波導在天線旋轉時仍保持電氣連接——這是 DOW 的關鍵機械挑戰。</p>
                         </div>
                         <div>
                             <p class="font-bold text-white">3. 環形器 Circulator — 讓收發共用一支天線</p>
-                            <p>三端口鐵氧體器件，利用<span class="text-emerald-300">法拉第旋轉效應</span>讓微波只能單向循環：發射機→天線→接收機→終端吸收，隔離度 20～40 dB。</p>
+                            <p>三端口鐵氧體器件，利用<span class="text-emerald-300">鐵氧體在外加磁場下的非互易（gyromagnetic）特性</span>讓微波只能單向循環：發射機→天線→接收機→終端吸收，隔離度 20～40 dB。</p>
                             <p class="text-[12px] text-slate-400 mt-1 font-mono pl-3 border-l border-slate-700">為何重要？發射峰值 250 kW，接收機只能承受幾 mW。沒有環形器保護，每發一次脈衝就燒毀接收機。</p>
                         </div>
                         <div>
                             <p class="font-bold text-white">4. 天線 Antenna（拋物面反射器）</p>
-                            <p>直徑 2～2.5 m 的拋物面碟。饋源在焦點，碟面把球面波整形成很窄的<span class="text-emerald-300">筆狀波束（Pencil Beam）</span>。波束寬 θ ≈ 1.2λ/D ≈ <span class="text-emerald-300">1°</span>、增益 ≈ 40 dBi、旁瓣 &lt; −25 dB。波束 1° 意味著 100 km 外照亮範圍僅 1.7 km 寬——這就是 DOW 能看清龍捲風精細結構的原因。現代 DOW 饋源有正交雙埠，<span class="text-emerald-300">同時發射水平(H)與垂直(V)極化</span>，這是雙偏振 ZDR/CC/KDP 的硬體基礎。</p>
+                            <p>直徑 2～2.5 m 的拋物面碟。饋源在焦點，碟面把球面波整形成很窄的<span class="text-emerald-300">筆狀波束（Pencil Beam）</span>。波束寬 θ ≈ 1.2λ/D ≈ <span class="text-emerald-300">1°</span>（X 波段）、增益約 <span class="text-emerald-300">40～45 dBi</span>、旁瓣 &lt; −25 dB。波束 1° 意味著 100 km 外照亮範圍僅 1.7 km 寬——這就是 DOW 能看清龍捲風精細結構的原因。現代 DOW 饋源有正交雙埠，<span class="text-emerald-300">同時發射水平(H)與垂直(V)極化</span>，這是雙偏振 ZDR/CC/KDP 的硬體基礎。</p>
                         </div>
                     </div>
 
@@ -728,11 +728,11 @@
                     <div class="space-y-4 pl-1">
                         <div>
                             <p class="font-bold text-white">5. 低雜訊放大器 LNA</p>
-                            <p>回波抵達時功率僅 10⁻¹³～10⁻¹⁵ 瓦，比一顆細胞的能量還小。LNA 在<span class="text-emerald-300">不加入太多雜訊</span>的前提下放大 20～30 dB。關鍵指標雜訊指數 NF = 10·log₁₀(SNR_in/SNR_out)，優秀者 &lt; 1.5 dB。依 <span class="text-emerald-300">Friis 公式</span>，信號越早放大、後級雜訊影響越小，因此 LNA 緊貼天線背面，用 GaAs／GaN HEMT 電晶體，部分系統甚至以液氮冷卻到 77 K。</p>
+                            <p>回波抵達時功率極其微弱，僅約 10⁻¹³～10⁻¹⁵ 瓦（對應 −100～−120 dBm）。LNA 在<span class="text-emerald-300">不加入太多雜訊</span>的前提下放大 20～30 dB。關鍵指標雜訊指數 NF = 10·log₁₀(SNR_in/SNR_out)，優秀者 &lt; 1.5 dB。依 <span class="text-emerald-300">Friis 雜訊公式</span>，信號越早放大、後級雜訊影響越小，因此 LNA 緊貼天線背面，多採 GaAs／GaN HEMT 電晶體；至於液氮冷卻到 77 K，主要見於電波天文等對靈敏度要求極端的系統，一般氣象雷達少用。</p>
                         </div>
                         <div>
                             <p class="font-bold text-white">6. 混頻器 Mixer ＋ 本地振盪器 LO（超外差）</p>
-                            <p>微波頻率太高，後端無法直接處理。混頻器把 RF 與 LO 相乘搬到較低的<span class="text-emerald-300">中頻 IF</span>：f_IF = f_RF − f_LO（例：5500 − 5430 = 70 MHz）。都卜勒位移 f_d = 2v/λ 完整保留在中頻裡（50 m/s 風速、C 波段約 18 kHz）。</p>
+                            <p>微波頻率太高，後端無法直接處理。混頻器把 RF 與 LO 相乘搬到較低的<span class="text-emerald-300">中頻 IF</span>：f_IF = f_RF − f_LO（例：5500 − 5430 = 70 MHz）。都卜勒位移 f_d = 2v/λ 完整保留在中頻裡（50 m/s 風速：C 波段 λ≈5.45 cm 約 1.8 kHz、X 波段 λ≈3.2 cm 約 3.1 kHz）。</p>
                         </div>
                         <div>
                             <p class="font-bold text-white">7. 中頻放大器 IF Amplifier</p>
@@ -744,7 +744,7 @@
                         </div>
                         <div>
                             <p class="font-bold text-white">9. ADC 類比數位轉換器</p>
-                            <p>把 I、Q 取樣量化成數字。採樣率需滿足 fs ≥ 2×頻寬（奈奎斯特），解析度 12～16 位元，動態範圍需涵蓋毛毛雨到大冰雹（&gt; 80 dB）。每個取樣點對應一個<span class="text-emerald-300">距離庫（Range Gate）</span>：Δr = c·Δt/2，2 MHz 取樣 → 距離解析度 75 m。</p>
+                            <p>把 I、Q 取樣量化成數字。取樣率須滿足奈奎斯特定理（實數訊號 fs ≥ 2×最高頻率；此處為 I/Q 複數基頻，複數取樣率只需 ≥ 訊號頻寬），解析度 12～16 位元，動態範圍需涵蓋毛毛雨到大冰雹（&gt; 80 dB）。每個取樣點對應一個<span class="text-emerald-300">距離庫（Range Gate）</span>：Δr = c·Δt/2，2 MHz 取樣 → 距離解析度 75 m。</p>
                         </div>
                         <div>
                             <p class="font-bold text-white">10. DSP 數位信號處理 — 真正的雷達智慧</p>
@@ -795,7 +795,7 @@
 
                     <!-- 一句話總結 -->
                     <div class="bg-emerald-950/30 border-l-2 border-emerald-500 rounded-r-lg p-3">
-                        <p class="text-emerald-200"><span class="font-bold">一句話總結：</span>雷達車發出一道瞬間功率相當於 25 萬個 1000 瓦燈泡同時亮起的電磁脈衝，100 km 外的雨滴只反彈回其中極微小的一部分，雷達車的電子系統在幾毫秒內從這個微弱到難以想像的信號裡，精確算出每個地點的降雨強度和風速——上面 11 個環節就是這個奇蹟發生的過程。</p>
+                        <p class="text-emerald-200"><span class="font-bold">一句話總結：</span>雷達車發出一道瞬間功率達 250 kW（約等於 2,500 個 100 瓦燈泡同時亮起）的電磁脈衝，100 km 外的雨滴只反彈回其中極微小的一部分（弱了十幾個數量級），雷達車的電子系統卻能在幾毫秒內從這個微弱到難以想像的信號裡，精確算出每個地點的降雨強度和風速——上面 11 個環節就是這個奇蹟發生的過程。</p>
                     </div>
                 </div>
             </details>
