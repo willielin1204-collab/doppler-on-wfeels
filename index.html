@@ -241,8 +241,11 @@
                     <div>
                         <label for="radarMode" class="block text-xs text-slate-400 mb-1 font-mono">雷達模式</label>
                         <select id="radarMode" onchange="changeRadarMode()" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs text-emerald-400 font-mono focus:outline-none focus:border-emerald-500">
-                            <option value="reflectivity">回波強度 (Reflectivity)</option>
-                            <option value="velocity">風場風速 (Velocity)</option>
+                            <option value="reflectivity">回波強度 Z (Reflectivity)</option>
+                            <option value="velocity">風場風速 V (Velocity)</option>
+                            <option value="zdr">雙偏振：差分反射率 ZDR</option>
+                            <option value="cc">雙偏振：相關係數 CC (ρhv)</option>
+                            <option value="kdp">雙偏振：比差分相位 KDP</option>
                         </select>
                     </div>
                     <div id="azimuthControl" class="hidden">
@@ -262,6 +265,29 @@
                             <i class="fa-solid fa-wind animate-pulse"></i> 模擬龍捲風
                         </button>
                     </div>
+                </div>
+
+                <!-- 模式科普說明 + 原理展開 -->
+                <div class="w-full mt-3 text-left">
+                    <p id="radarModeDesc" class="text-[11px] text-slate-300 leading-relaxed">回波強度：顏色越暖代表雨越大、甚至有冰雹。</p>
+                    <details class="mt-1">
+                        <summary class="text-[10px] text-emerald-400/80 cursor-pointer hover:text-emerald-300 select-none">📐 原理</summary>
+                        <p id="radarModeFormula" class="text-[10px] text-slate-400 font-mono mt-1 pl-3 border-l border-slate-700">Z 反射率因子，單位 dBZ。雨滴越多越大，回波越強。</p>
+                    </details>
+                </div>
+
+                <!-- TDS 龍捲風碎片自動判讀（雙偏振核心應用） -->
+                <div id="tdsPanel" class="w-full mt-2 rounded border border-slate-800 bg-slate-950 p-2 text-left">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-mono text-slate-500 uppercase">TDS 龍捲風碎片自動判讀</span>
+                        <span id="tdsStatus" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">未偵測</span>
+                    </div>
+                    <div id="tdsChecklist" class="grid grid-cols-3 gap-1 mt-1.5 text-[9px] font-mono text-slate-500">
+                        <span data-cond="z" class="text-slate-500">◯ 高回波 Z≥45</span>
+                        <span data-cond="zdr" class="text-slate-500">◯ 低 ZDR≈0</span>
+                        <span data-cond="cc" class="text-slate-500">◯ 低 CC&lt;0.8</span>
+                    </div>
+                    <p class="text-[9px] text-slate-600 mt-1.5 leading-relaxed">三條件同時成立＝雷達確認龍捲風把地面碎片捲上天（切到 <span class="text-emerald-400">CC</span> 模式看氣旋中心的紅色驟降最明顯）。</p>
                 </div>
             </div>
 
@@ -684,6 +710,33 @@
 
         // 定義 dBZ 與徑向速度的配色表 (精確復刻 images.jpeg 專業色卡)
         function getRadarColor(val, mode) {
+            // 無資料（NaN / undefined）→ 透明，雙偏振模式在無降水處不上色
+            if (typeof val !== 'number' || isNaN(val)) return 'rgba(0,0,0,0)';
+            if (mode === 'zdr') {
+                // ZDR (dB)：≈0(冰雹/碎片)灰 → 雨滴越扁越大，綠→黃→紅
+                if (val < 0.2) return 'rgba(148,163,184,0.5)';   // 灰：球形(冰雹/碎片)
+                if (val < 0.6) return 'rgba(13,148,136,0.55)';
+                if (val < 1.2) return 'rgba(34,197,94,0.65)';
+                if (val < 2.0) return 'rgba(163,230,53,0.75)';
+                if (val < 3.0) return 'rgba(234,179,8,0.85)';
+                return 'rgba(239,68,68,0.95)';                   // 大雨滴
+            }
+            if (mode === 'cc') {
+                // CC / ρhv：高(純雨)藍綠 → 低(<0.8非氣象目標/碎片)轉紅，越紅越像碎片
+                if (val > 0.97) return 'rgba(13,148,136,0.5)';   // 純雨
+                if (val > 0.93) return 'rgba(34,197,94,0.6)';
+                if (val > 0.85) return 'rgba(234,179,8,0.8)';    // 混合相/融化層
+                if (val > 0.75) return 'rgba(249,115,22,0.9)';
+                return 'rgba(239,68,68,0.98)';                   // 驟降：龍捲風碎片(TDS)
+            }
+            if (mode === 'kdp') {
+                // KDP (°/km)：≈0(冰雹/碎片)灰 → 液態降雨越強，綠→黃→紅
+                if (val < 0.3) return 'rgba(71,85,105,0.35)';
+                if (val < 1.0) return 'rgba(34,197,94,0.55)';
+                if (val < 2.0) return 'rgba(163,230,53,0.7)';
+                if (val < 3.5) return 'rgba(234,179,8,0.85)';
+                return 'rgba(239,68,68,0.95)';
+            }
             if (mode === 'reflectivity') {
                 // dBZ 降雨反射率色帶 (從 -15dBZ 藍色到 50+dBZ 極致粉色/白色)
                 if (val < -15) return 'rgba(0,0,0,0)';
@@ -734,7 +787,7 @@
             const dy = y - centerY;
             const distance = Math.sqrt(dx * dx + dy * dy);
 
-            if (distance > 200) return -20; // 限制在雷達動態觀測範圍內
+            if (distance > 200) return (mode === 'reflectivity' || mode === 'velocity') ? -20 : NaN; // 超出觀測範圍
 
             const center = centerOverride || getStormCenter();
             const scX = center.x;
@@ -745,72 +798,85 @@
             const sDist = Math.sqrt(sDx * sDx + sDy * sDy);
             const sAngle = Math.atan2(sDy, sDx); // 弧度
 
-            let val = -20;
+            // ===== 先算「乾淨」反射率 Z(dBZ) 與區域旗標，供反射率與雙偏振共用 =====
+            let Z = -20;
+            // A. 寬廣的 stratiform 輕降雨帶
+            const rainband = Math.sin(sAngle - sDist * 0.03) * 15 - (sDist * 0.1);
+            if (rainband > -5) Z = Math.max(Z, 8 + rainband);
+            // B. 超大胞主要上升氣流核心與強降雨
+            if (sDist < 90) Z = Math.max(Z, 48 - sDist * 0.4);
+            // C. 經典釣鉤回波 (Hook Echo)：延伸扭曲的螺旋曲線
+            const targetAngle = 1.6; // 南側偏東
+            const hookSpiral = sAngle - (sDist * 0.06);
+            const angleDiff = Math.abs(hookSpiral - targetAngle);
+            let inHook = false;
+            if (sDist < 70 && sDist > 15 && angleDiff < 0.4) {
+                Z = Math.max(Z, (1.0 - angleDiff / 0.4) * 48 - (sDist * 0.15));
+                inHook = true;
+            }
+            // D. 冰雹/碎片核心
+            const inHailCore = sDist < 12;
+            if (inHailCore) Z = Math.max(Z, 55 - sDist * 1.5);
+            // E. 弱回波入流槽 (Inflow Notch)：乾空氣抽入
+            const notchAngle = sAngle - 0.5; // 東南側
+            if (sDist < 45 && sDist > 8 && Math.abs(notchAngle) < 0.5) Z = Math.max(-20, Z - 35);
 
             if (mode === 'reflectivity') {
-                // A. 寬廣的 stratiform 輕降雨帶
-                const rainband = Math.sin(sAngle - sDist * 0.03) * 15 - (sDist * 0.1);
-                if (rainband > -5) {
-                    val = Math.max(val, 8 + rainband);
-                }
+                let val = Z;
+                if (val > -15) val += (Math.random() - 0.5) * 6; // 雷達噪訊
+                return val;
+            }
 
-                // B. 超大胞主要上升氣流核心與強降雨 FFD (前側下沉)
-                if (sDist < 90) {
-                    // 核心高回波
-                    const coreVal = 48 - (sDist * 0.4);
-                    val = Math.max(val, coreVal);
-                }
-
-                // C. 經典釣鉤回波 (Hook Echo) 數值公式
-                // 釣鉤是一條延伸出去、在特定角度與半徑扭曲的螺旋曲線
-                const targetAngle = 1.6; // 南側偏東
-                const hookSpiral = sAngle - (sDist * 0.06);
-                const angleDiff = Math.abs(hookSpiral - targetAngle);
-                
-                if (sDist < 70 && sDist > 15 && angleDiff < 0.4) {
-                    // 強烈氣旋捲入產生的極強回波
-                    const hookIntensity = (1.0 - angleDiff / 0.4) * 48 - (sDist * 0.15);
-                    val = Math.max(val, hookIntensity);
-                }
-
-                // D. 冰雹核心 (TDS - Tornado Debris Signature)
-                if (sDist < 12) {
-                    val = Math.max(val, 55 - sDist * 1.5);
-                }
-
-                // E. 弱回波入流槽 (Inflow Notch) 屏蔽 (乾空氣抽入)
-                const notchAngle = sAngle - 0.5; // 東南側
-                if (sDist < 45 && sDist > 8 && Math.abs(notchAngle) < 0.5) {
-                    val = Math.max(-20, val - 35);
-                }
-
-                // 加上逼真的大氣雷達噪訊擾動 (Radar Noise)
-                if (val > -15) {
-                    val += (Math.random() - 0.5) * 6;
-                }
-            } else {
-                // 風速模式 (徑向速度 Velocity V)
-                // 經典氣旋風場：一側朝向雷達(藍)，一側遠離雷達(紅)，形成強烈的「偶極子」切變 (Couplet)
+            if (mode === 'velocity') {
+                // 徑向速度 V：一側朝雷達(藍)、一側遠離(紅)，形成「偶極子」切變 (Couplet)
+                let val;
                 if (sDist < 100) {
-                    // 以氣旋中心切變風場
                     const rotationSpeed = (tornadoSimulation ? 85 : 45) * Math.exp(-sDist * 0.015);
-                    // 朝向/遠離分量
                     const tangentialX = -Math.sin(sAngle) * rotationSpeed;
                     const tangentialY = Math.cos(sAngle) * rotationSpeed;
-                    
-                    // 投影至雷達徑向 (向外向量)
                     const radialX = dx / (distance || 1);
                     const radialY = dy / (distance || 1);
-                    
                     val = (tangentialX * radialX + tangentialY * radialY);
                     val += (Math.random() - 0.5) * 8; // 亂流擾動
                 } else {
-                    // 背景平流風場 (向東北漂移)
-                    val = 15 * Math.cos(Math.atan2(dy, dx) - 0.7);
+                    val = 15 * Math.cos(Math.atan2(dy, dx) - 0.7); // 背景平流
                 }
+                return val;
             }
 
-            return val;
+            // ===== 雙偏振：回波太弱視為無降水(無資料) =====
+            if (Z < 5) return NaN;
+            // TDS 碎片條件：龍捲進行中且非常接近氣旋中心(碎片被捲上天)
+            const isTDS = tornadoSimulation && sDist < 18;
+
+            if (mode === 'zdr') {
+                // 大雨滴受阻力壓扁 → ZDR 正；冰雹翻滾、碎片隨機 → ≈0 或負
+                let zdr;
+                if (isTDS)           zdr = -0.5 + (Math.random() - 0.5) * 1.0;
+                else if (inHailCore) zdr = 0.2 + (Math.random() - 0.5) * 0.6;
+                else                 zdr = Math.min(4.5, 0.06 * (Z - 5));
+                return zdr + (Math.random() - 0.5) * 0.2;
+            }
+
+            if (mode === 'cc') {
+                // 相關係數：純雨高(≈0.98)、混合相略降、碎片驟降(<0.8) ← TDS 關鍵
+                let cc;
+                if (isTDS)           cc = 0.55 + Math.random() * 0.18;  // 0.55~0.73 驟降
+                else if (inHailCore) cc = 0.90 + Math.random() * 0.04;  // 混合相
+                else if (inHook)     cc = 0.95 + Math.random() * 0.03;
+                else                 cc = 0.975 + Math.random() * 0.02; // 純雨
+                return Math.min(1.0, cc);
+            }
+
+            if (mode === 'kdp') {
+                // 比差分相位 ∝ 液態降雨率；冰雹/碎片(非液態) ≈ 0
+                let kdp;
+                if (isTDS || inHailCore) kdp = 0.1 + Math.random() * 0.2;
+                else                     kdp = Math.max(0, 0.05 * (Z - 15));
+                return kdp + (Math.random() - 0.5) * 0.1;
+            }
+
+            return NaN;
         }
 
         // 高度剖面：讓同一場水平風暴結構往上空延伸時，依高度增強或減弱。
@@ -853,13 +919,46 @@
             setTimeout(() => playPingSound(620), 240);
         }
 
+        // 各雷達模式的顯示名稱、標籤顏色、科普說明與原理公式
+        const RADAR_MODE_INFO = {
+            reflectivity: { data: 'REFLECTIVITY (Z)', color: 'emerald',
+                desc: '回波強度：顏色越暖代表雨越大、甚至有冰雹。',
+                formula: 'Z 反射率因子（dBZ）。雨滴越多越大，回波越強。' },
+            velocity: { data: 'VELOCITY (V)', color: 'blue',
+                desc: '徑向風速：藍色朝雷達吹來、紅色遠離；一藍一紅並排＝旋轉（中氣旋）。',
+                formula: '多普勒效應：回波頻率偏移 → 視線方向的風速分量。' },
+            zdr: { data: 'DIFFERENTIAL REFLECTIVITY (ZDR)', color: 'emerald',
+                desc: '雨滴形狀：值越大＝雨滴越扁（大雨滴）；接近 0 多為冰雹或被捲起的碎片。',
+                formula: 'ZDR = 10·log₁₀(Z_h / Z_v)（dB）＝水平與垂直回波強度之比。' },
+            cc: { data: 'CORRELATION COEFFICIENT (CC / ρhv)', color: 'amber',
+                desc: '訊號一致性：藍綠＝乾淨的雨；轉紅代表 CC 驟降，多半是非氣象目標——龍捲風碎片！',
+                formula: 'ρhv：水平與垂直回波的相關係數（0~1）。< 0.8 常為非氣象目標。' },
+            kdp: { data: 'SPECIFIC DIFFERENTIAL PHASE (KDP)', color: 'emerald',
+                desc: '降雨強度估計：值越大液態雨越強；不受衰減與校正影響，冰雹/碎片接近 0。',
+                formula: 'KDP = dΦ_DP/dr（°/km）＝差分相位隨距離的變化率。' }
+        };
+
+        // 左側色標對照表設定：vals 由上(高值)到下(低值)建立漸層，ticks 為對應刻度
+        const LEGEND = {
+            reflectivity: { unit: 'dBZ',  vals: [55, 45, 35, 25, 15, 5, -5],   ticks: [50, 40, 30, 20, 10, 0, -10, -20] },
+            velocity:     { unit: 'm/s',  vals: [60, 30, 8, -8, -30, -60],     ticks: [60, 40, 20, 0, -20, -40, -60] },
+            zdr:          { unit: 'dB',   vals: [4, 3, 2, 1, 0.4, 0],          ticks: [5, 4, 3, 2, 1, 0] },
+            cc:           { unit: 'ρhv',  vals: [0.99, 0.95, 0.88, 0.78, 0.6], ticks: [1.0, 0.95, 0.9, 0.8, 0.6] },
+            kdp:          { unit: '°/km', vals: [4, 2.5, 1.5, 0.6, 0.1],       ticks: [5, 3, 2, 1, 0] }
+        };
+
         function updateModeLabel() {
             const radarMode = document.getElementById('radarMode').value;
+            const info = RADAR_MODE_INFO[radarMode] || RADAR_MODE_INFO.reflectivity;
             const modeText = document.getElementById('currentModeText');
             const scanNameMap = { ppi: 'PPI 平面位置掃描', rhi: 'RHI 距離高度掃描', zenith: 'ZENITH 天頂指向' };
-            const dataNameMap = radarMode === 'reflectivity' ? 'REFLECTIVITY (Z)' : 'VELOCITY (V)';
-            modeText.innerText = `${scanNameMap[scanType]} ・ ${dataNameMap}`;
-            modeText.className = radarMode === 'reflectivity' ? "text-xs font-mono text-emerald-400 flex items-center gap-1 z-10 text-right" : "text-xs font-mono text-blue-400 flex items-center gap-1 z-10 text-right";
+            modeText.innerText = `${scanNameMap[scanType]} ・ ${info.data}`;
+            const colorClass = info.color === 'blue' ? 'text-blue-400' : (info.color === 'amber' ? 'text-amber-400' : 'text-emerald-400');
+            modeText.className = `text-xs font-mono ${colorClass} flex items-center gap-1 z-10 text-right`;
+            const d = document.getElementById('radarModeDesc');
+            if (d) d.innerText = info.desc;
+            const f = document.getElementById('radarModeFormula');
+            if (f) f.innerText = info.formula;
         }
 
         function changeRadarMode() {
@@ -931,7 +1030,7 @@
                     const y = 210 + sinA * r;
 
                     const rawVal = queryAtmosphereValue(x, y, radarMode);
-                    const scaledVal = rawVal * stormIntensity;
+                    const scaledVal = (radarMode === 'reflectivity' || radarMode === 'velocity') ? rawVal * stormIntensity : rawVal;
 
                     const color = getRadarColor(scaledVal, radarMode);
                     if (color !== 'rgba(0,0,0,0)') {
@@ -1002,37 +1101,34 @@
             ctx.fillText("Madison", 300, 90);
             ctx.fillText("Horseshoe Beach", 280, 380);
 
-            // 11. 復刻 images.jpeg 左側垂直專業 dBZ 色標對照表
+            // 11. 左側垂直色標對照表（依目前雷達模式自動切換色帶與單位）
             const scaleX = 15;
             const scaleY = 60;
             const scaleW = 12;
             const scaleH = 280;
-            
-            // 繪製色帶漸層
-            const dbzGrad = ctx.createLinearGradient(scaleX, scaleY, scaleX, scaleY + scaleH);
-            dbzGrad.addColorStop(0, getRadarColor(55, 'reflectivity'));
-            dbzGrad.addColorStop(0.15, getRadarColor(45, 'reflectivity'));
-            dbzGrad.addColorStop(0.3, getRadarColor(35, 'reflectivity'));
-            dbzGrad.addColorStop(0.45, getRadarColor(25, 'reflectivity'));
-            dbzGrad.addColorStop(0.6, getRadarColor(15, 'reflectivity'));
-            dbzGrad.addColorStop(0.75, getRadarColor(5, 'reflectivity'));
-            dbzGrad.addColorStop(0.9, getRadarColor(-5, 'reflectivity'));
-            dbzGrad.addColorStop(1, 'rgba(23, 37, 84, 0.2)');
 
-            ctx.fillStyle = dbzGrad;
+            const legend = LEGEND[radarMode] || LEGEND.reflectivity;
+            const legendGrad = ctx.createLinearGradient(scaleX, scaleY, scaleX, scaleY + scaleH);
+            legend.vals.forEach((v, i) => {
+                const stop = legend.vals.length === 1 ? 0 : i / (legend.vals.length - 1);
+                let c = getRadarColor(v, radarMode);
+                if (c === 'rgba(0,0,0,0)') c = 'rgba(30,41,59,0.3)';
+                legendGrad.addColorStop(stop, c);
+            });
+            ctx.fillStyle = legendGrad;
             ctx.fillRect(scaleX, scaleY, scaleW, scaleH);
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
             ctx.strokeRect(scaleX, scaleY, scaleW, scaleH);
 
-            // 繪製 dBZ 刻度文字
+            // 刻度文字
             ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
             ctx.font = '8px monospace';
-            const ticks = [50, 40, 30, 20, 10, 0, -10, -20];
-            ticks.forEach((tick, i) => {
-                const tickY = scaleY + (i / (ticks.length - 1)) * scaleH;
+            legend.ticks.forEach((tick, i) => {
+                const tickY = scaleY + (i / (legend.ticks.length - 1)) * scaleH;
                 ctx.fillText(tick, scaleX + scaleW + 4, tickY + 3);
             });
-            ctx.fillText("dBZ", scaleX - 2, scaleY - 6);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+            ctx.fillText(legend.unit, scaleX - 2, scaleY - 6);
 
             // 12. 繪製雷達頂部即時運作數據 (PPI Metadata)
             ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
@@ -1079,7 +1175,7 @@
                 for (let ri = 0; ri <= rowSteps; ri++) {
                     const heightKm = (ri / rowSteps) * maxHeightKm;
                     const rawVal = queryStormVolume(wx, wy, heightKm, radarMode);
-                    const scaledVal = rawVal * stormIntensity;
+                    const scaledVal = (radarMode === 'reflectivity' || radarMode === 'velocity') ? rawVal * stormIntensity : rawVal;
                     const color = getRadarColor(scaledVal, radarMode);
                     if (color !== 'rgba(0,0,0,0)') {
                         rctx.fillStyle = color;
@@ -1159,7 +1255,7 @@
             zenithHistory.forEach((col, idx) => {
                 const px = plotLeft + idx * colW;
                 col.forEach((rawVal, ri) => {
-                    const scaledVal = rawVal * stormIntensity;
+                    const scaledVal = (radarMode === 'reflectivity' || radarMode === 'velocity') ? rawVal * stormIntensity : rawVal;
                     const color = getRadarColor(scaledVal, radarMode);
                     if (color !== 'rgba(0,0,0,0)') {
                         const py = plotTop + plotH - (ri / zenithHeightSteps) * plotH;
@@ -1224,6 +1320,34 @@
 
             document.getElementById('maxDbz').innerText = (maxDbz + Math.random() * 2).toFixed(1) + " dBZ";
             document.getElementById('maxVelocity').innerText = (maxVel + Math.random() * 1.5).toFixed(1) + " m/s";
+
+            // --- TDS 龍捲風碎片自動判讀：在氣旋中心取樣三個雙偏振條件 ---
+            const tdsC = getStormCenter();
+            const tZ = queryAtmosphereValue(tdsC.x, tdsC.y, 'reflectivity');   // 未縮放的真實回波
+            const tZdr = queryAtmosphereValue(tdsC.x, tdsC.y, 'zdr');
+            const tCc = queryAtmosphereValue(tdsC.x, tdsC.y, 'cc');
+            updateTdsPanel(tZ >= 45, !isNaN(tZdr) && Math.abs(tZdr) < 1.0, !isNaN(tCc) && tCc < 0.8);
+        }
+
+        // 更新 TDS 判讀面板（三條件 checklist 與總狀態）
+        function updateTdsPanel(condZ, condZdr, condCc) {
+            const setItem = (cond, ok, label) => {
+                const el = document.querySelector('#tdsChecklist [data-cond="' + cond + '"]');
+                if (!el) return;
+                el.textContent = (ok ? '✓ ' : '◯ ') + label;
+                el.className = ok ? 'text-emerald-400' : 'text-slate-500';
+            };
+            setItem('z', condZ, '高回波 Z≥45');
+            setItem('zdr', condZdr, '低 ZDR≈0');
+            setItem('cc', condCc, '低 CC<0.8');
+            const all = condZ && condZdr && condCc;
+            const s = document.getElementById('tdsStatus');
+            if (s) {
+                s.textContent = all ? '🔴 TDS 確認' : '未偵測';
+                s.className = all
+                    ? 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-red-950 border border-red-500/50 text-red-400 animate-pulse'
+                    : 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400';
+            }
         }
 
         // 主動畫迴圈：用 rAF 時間戳累加 simTime，三種掃描模式共用同一個時鐘與同一場風暴。
