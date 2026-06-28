@@ -2004,6 +2004,13 @@
             if (scanTraces.rhi) scanTraces.rhi.visible = (m === 'rhi');
             if (scanTraces.zenith) scanTraces.zenith.visible = (m === 'zenith');
 
+            // 天線會動的零件熱點只在靜態檢視顯示，避免掃描時綠點與天線錯位漂浮
+            const moving = (m !== 'static');
+            for (let i = 0; i < model3dHotspots.length; i++) {
+                const s = model3dHotspots[i];
+                if (s.userData && ['antenna', 'feedarm', 'waveguide', 'direction'].indexOf(s.userData.key) !== -1) s.visible = !moving;
+            }
+
             if (m === 'ppi') {                       // 固定低仰角、持續水平旋轉
                 scanEl.rotation.z = lerp(scanEl.rotation.z, 0.14, 0.1);
                 scanAz.rotation.y += 0.02;
@@ -2082,7 +2089,7 @@
                 model3dMouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 
                 model3dRaycaster.setFromCamera(model3dMouse, model3dCamera);
-                const hits = model3dRaycaster.intersectObjects(model3dHotspots);
+                const hits = model3dRaycaster.intersectObjects(model3dHotspots).filter(h => h.object.visible); // 略過隱藏熱點(Three 的 raycaster 不會自動跳過 visible=false)
 
                 if (hits.length > 0) {
                     const sprite = hits[0].object;
@@ -2111,7 +2118,7 @@
                 model3dMouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
                 model3dMouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
                 model3dRaycaster.setFromCamera(model3dMouse, model3dCamera);
-                const hits = model3dRaycaster.intersectObjects(model3dHotspots);
+                const hits = model3dRaycaster.intersectObjects(model3dHotspots).filter(h => h.object.visible); // 略過隱藏熱點(Three 的 raycaster 不會自動跳過 visible=false)
                 if (hits.length > 0) {
                     showPartInfo(hits[0].object.userData);
                     playPingSound(750);
