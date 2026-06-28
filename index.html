@@ -627,6 +627,45 @@
         </div>
     </section>
 
+    <!-- ✨ P5：部署決策模擬（追風小遊戲，單一情境） -->
+    <section id="deploy-section" class="reveal max-w-7xl w-full mx-auto p-4 mt-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-2xl">
+            <div class="border-b border-slate-800 pb-3 mb-4">
+                <h2 class="text-xl font-black text-white flex items-center gap-2"><i class="fa-solid fa-gamepad text-emerald-400"></i> 部署決策模擬：你是今天的追風指揮官</h2>
+                <p class="text-xs text-slate-400 mt-1 leading-relaxed">一顆超級胞正沿著預測路徑（紅色帶）移動，龍捲風就在其中。拖曳 DOW 停到你想觀測的位置、調整天線方位對準風暴，再按「開始觀測」。事後依「資料品質」與「安全」評分——太遠資料糊、太近會被命中，停在路邊較好撤離。</p>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div class="lg:col-span-2">
+                    <canvas id="deployCanvas" role="img" aria-label="部署決策模擬俯視地圖" width="640" height="460" class="w-full rounded bg-black border border-slate-800 cursor-grab active:cursor-grabbing touch-none"></canvas>
+                    <p class="text-[10px] text-slate-500 mt-1">拖曳綠色 <i class="fa-solid fa-truck-front"></i> DOW 標記移動；藍色線為天線指向。紅色帶＝龍捲風預測路徑（停進去會被命中）。</p>
+                </div>
+                <div class="bg-slate-950 border border-slate-800 rounded-lg p-4 flex flex-col gap-3">
+                    <div>
+                        <label for="deployAz" class="block text-xs text-slate-400 mb-1 font-mono">天線方位角＝<span id="deployAzVal" class="text-emerald-400">225</span>°（0°=北，順時針）</label>
+                        <input type="range" id="deployAz" min="0" max="359" step="1" value="225" class="w-full accent-emerald-500 h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="deployRun" class="py-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-xs rounded transition-all flex items-center justify-center gap-1"><i class="fa-solid fa-play"></i> 開始觀測</button>
+                        <button id="deployReset" class="py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold text-xs rounded transition-all flex items-center justify-center gap-1"><i class="fa-solid fa-rotate-left"></i> 重新部署</button>
+                    </div>
+                    <div class="bg-slate-900 border border-slate-800 rounded p-2.5 text-xs font-mono space-y-1.5">
+                        <div class="flex justify-between"><span class="text-slate-500">資料品質</span><span id="deployData" class="text-slate-300">—</span></div>
+                        <div class="flex justify-between"><span class="text-slate-500">安全</span><span id="deploySafety" class="text-slate-300">—</span></div>
+                        <div class="flex justify-between border-t border-slate-800 pt-1.5"><span class="text-slate-400 font-bold">總評</span><span id="deployOverall" class="text-emerald-400 font-bold">—</span></div>
+                    </div>
+                    <p id="deployVerdict" class="text-xs text-slate-300 leading-relaxed flex-grow">調整好位置與方位，按「開始觀測」看追風教官的講評。</p>
+                    <details>
+                        <summary class="text-[10px] text-emerald-400/80 cursor-pointer hover:text-emerald-300 select-none">📐 評分原理</summary>
+                        <p class="text-[10px] text-slate-400 font-mono mt-1 pl-3 border-l border-slate-700 leading-relaxed">
+                            資料品質：與風暴最近距離越接近「甜蜜帶」(約 60px)越高，天線越對準中氣旋加分。<br>
+                            安全：離龍捲路徑帶越遠越高；停進路徑帶＝被命中(0 分)；靠近道路有撤離加分。
+                        </p>
+                    </details>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- 腳部宣告 -->
     <footer class="border-t border-slate-800 bg-slate-900 px-4 py-6 mt-8">
         <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-400">
@@ -2434,6 +2473,142 @@
                 });
             });
             render();
+        })();
+
+        // ==========================================
+        // P5：部署決策模擬（單一情境追風小遊戲）
+        // ==========================================
+        ;(function () {
+            const cv = document.getElementById('deployCanvas');
+            if (!cv) return;
+            const g = cv.getContext('2d');
+            const CW = 640, CH = 460;
+            const S0 = { x: 80, y: 100 };
+            const dlen = Math.hypot(1, 0.6), ux = 1 / dlen, uy = 0.6 / dlen; // 風暴移動方向單位向量
+            const Tmax = 480, corridorHalf = 20, ideal = 60;
+            const endP = { x: S0.x + ux * Tmax, y: S0.y + uy * Tmax };
+            const roads = [
+                [{ x: 0, y: 300 }, { x: 640, y: 332 }],
+                [{ x: 210, y: 0 }, { x: 270, y: 460 }],
+                [{ x: 0, y: 130 }, { x: 640, y: 96 }]
+            ];
+            let dow = { x: 520, y: 300 }, az = 225, phase = 'setup', dragging = false;
+            let closest = Infinity, closestMeso = null, hit = false, rafId = null;
+
+            const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+            function distToSeg(p, a, b) {
+                const dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy || 1;
+                let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / L2; t = Math.max(0, Math.min(1, t));
+                return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+            }
+            const nearRoad = p => roads.some(r => distToSeg(p, r[0], r[1]) < 16);
+            function perpDist(p, a, b) {
+                const dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy || 1;
+                const t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / L2;
+                return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+            }
+            const mesoAt = t => ({ x: S0.x + ux * t, y: S0.y + uy * t });
+            const compassAz = (f, t) => (Math.atan2(t.x - f.x, -(t.y - f.y)) * 180 / Math.PI + 360) % 360;
+            const angDiff = (a, b) => { let d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; };
+
+            function drawScene(mesoT) {
+                g.fillStyle = '#0a0f1c'; g.fillRect(0, 0, CW, CH);
+                // 道路
+                g.strokeStyle = '#3e2c1c'; g.lineWidth = 3;
+                roads.forEach(r => { g.beginPath(); g.moveTo(r[0].x, r[0].y); g.lineTo(r[1].x, r[1].y); g.stroke(); });
+                // 龍捲路徑帶
+                g.strokeStyle = 'rgba(239,68,68,0.14)'; g.lineWidth = corridorHalf * 2; g.lineCap = 'round';
+                g.beginPath(); g.moveTo(S0.x, S0.y); g.lineTo(endP.x, endP.y); g.stroke(); g.lineCap = 'butt';
+                g.strokeStyle = 'rgba(239,68,68,0.5)'; g.lineWidth = 1; g.setLineDash([5, 5]);
+                g.beginPath(); g.moveTo(S0.x, S0.y); g.lineTo(endP.x, endP.y); g.stroke(); g.setLineDash([]);
+                g.fillStyle = 'rgba(248,113,113,0.8)'; g.font = '10px monospace'; g.fillText('預測路徑', endP.x - 60, endP.y + 16);
+
+                // 超級胞 + 中氣旋
+                const m = mesoAt(mesoT);
+                const rg = g.createRadialGradient(m.x, m.y, 4, m.x, m.y, 70);
+                rg.addColorStop(0, 'rgba(236,72,153,0.5)'); rg.addColorStop(0.4, 'rgba(239,68,68,0.3)'); rg.addColorStop(0.7, 'rgba(234,179,8,0.16)'); rg.addColorStop(1, 'rgba(16,185,129,0)');
+                g.fillStyle = rg; g.beginPath(); g.arc(m.x, m.y, 70, 0, Math.PI * 2); g.fill();
+                g.fillStyle = '#fff'; g.font = 'bold 9px monospace'; g.fillText('🌪 龍捲', m.x - 16, m.y - 4);
+
+                // DOW + 天線指向
+                const rad = az * Math.PI / 180, bx = dow.x + Math.sin(rad) * 120, by = dow.y - Math.cos(rad) * 120;
+                g.strokeStyle = 'rgba(96,165,250,0.85)'; g.lineWidth = 2; g.beginPath(); g.moveTo(dow.x, dow.y); g.lineTo(bx, by); g.stroke();
+                g.fillStyle = nearRoad(dow) ? '#10b981' : '#f59e0b';
+                g.fillRect(dow.x - 7, dow.y - 7, 14, 14); g.strokeStyle = '#022'; g.strokeRect(dow.x - 7, dow.y - 7, 14, 14);
+                g.fillStyle = '#a7f3d0'; g.font = 'bold 10px monospace'; g.fillText('DOW', dow.x - 11, dow.y + 24);
+
+                if (phase === 'done' && hit) {
+                    g.strokeStyle = '#ef4444'; g.lineWidth = 3;
+                    g.beginPath(); g.moveTo(dow.x - 11, dow.y - 11); g.lineTo(dow.x + 11, dow.y + 11); g.moveTo(dow.x + 11, dow.y - 11); g.lineTo(dow.x - 11, dow.y + 11); g.stroke();
+                }
+            }
+
+            function finish() {
+                phase = 'done';
+                const dataQ = Math.exp(-Math.pow((closest - ideal) / 42, 2));
+                const tdir = closestMeso ? compassAz(dow, closestMeso) : az;
+                const aimErr = angDiff(az, tdir);
+                const aimF = Math.max(0, Math.cos(aimErr * Math.PI / 180));
+                const dataScore = Math.round(100 * dataQ * (0.55 + 0.45 * aimF));
+                const perp = perpDist(dow, S0, endP);
+                let safety;
+                if (hit) safety = 0;
+                else { safety = Math.round(Math.max(0, Math.min(100, (perp - corridorHalf) / 0.9))); if (nearRoad(dow)) safety = Math.min(100, safety + 10); }
+                const overall = hit ? Math.round(dataScore * 0.15) : Math.round(0.5 * dataScore + 0.5 * safety);
+
+                const setTxt = (id, v, cls) => { const e = document.getElementById(id); e.textContent = v; if (cls) e.className = cls; };
+                setTxt('deployData', dataScore + ' / 100', dataScore > 60 ? 'text-emerald-400' : dataScore > 30 ? 'text-amber-400' : 'text-red-400');
+                setTxt('deploySafety', hit ? '0（被命中）' : safety + ' / 100', safety > 60 ? 'text-emerald-400' : safety > 30 ? 'text-amber-400' : 'text-red-400');
+                setTxt('deployOverall', overall + ' / 100', overall > 70 ? 'text-emerald-400 font-bold' : overall > 45 ? 'text-amber-400 font-bold' : 'text-red-400 font-bold');
+
+                const hints = [];
+                if (closest > 110) hints.push('離風暴太遠、解析度不足');
+                if (closest < 35) hints.push('貼得太近、危險且波束打不開');
+                if (aimErr > 45) hints.push('天線沒對準中氣旋');
+                if (!hit && perp - corridorHalf < 30) hints.push('離路徑帶太近、撤離餘裕小');
+                let verdict;
+                if (hit) verdict = '🔴 車輛被龍捲直接命中！再漂亮的資料也沒意義——安全永遠第一。把 DOW 停到紅色路徑帶之外再試一次。';
+                else if (overall >= 80) verdict = '🏆 漂亮！距離抓在甜蜜帶、安全離開路徑、天線也對準了——教科書級部署，這就是 DOW 團隊的日常。';
+                else if (overall >= 55) verdict = '👍 不錯的部署，但還能更好：' + (hints.join('、') || '微調距離與方位') + '。';
+                else verdict = '⚠️ 這次有明顯問題：' + (hints.join('、') || '重新評估距離與安全') + '。';
+                document.getElementById('deployVerdict').textContent = verdict;
+                if (typeof playPingSound === 'function') playPingSound(hit ? 200 : (overall > 70 ? 880 : 500));
+                drawScene(Tmax);
+            }
+
+            function run() {
+                if (phase === 'running') return;
+                phase = 'running'; closest = Infinity; closestMeso = null; hit = false;
+                const start = performance.now(), dur = 2600;
+                function loop(now) {
+                    const prog = Math.min(1, (now - start) / dur), t = prog * Tmax, m = mesoAt(t);
+                    const d = dist(dow, m);
+                    if (d < closest) { closest = d; closestMeso = m; }
+                    if (d < corridorHalf + 4) hit = true;
+                    drawScene(t);
+                    if (prog < 1) rafId = requestAnimationFrame(loop); else finish();
+                }
+                rafId = requestAnimationFrame(loop);
+            }
+            function reset() {
+                if (rafId) cancelAnimationFrame(rafId);
+                phase = 'setup'; closest = Infinity; hit = false;
+                ['deployData', 'deploySafety'].forEach(id => { document.getElementById(id).textContent = '—'; document.getElementById(id).className = 'text-slate-300'; });
+                const o = document.getElementById('deployOverall'); o.textContent = '—'; o.className = 'text-emerald-400 font-bold';
+                document.getElementById('deployVerdict').textContent = '調整好位置與方位，按「開始觀測」看追風教官的講評。';
+                drawScene(0);
+            }
+
+            // 拖曳 DOW
+            function toCanvas(e) { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * CW / r.width, y: (e.clientY - r.top) * CH / r.height }; }
+            cv.addEventListener('pointerdown', e => { if (phase === 'running') return; const p = toCanvas(e); if (dist(p, dow) < 18) { dragging = true; cv.setPointerCapture(e.pointerId); } });
+            cv.addEventListener('pointermove', e => { if (!dragging) return; const p = toCanvas(e); dow.x = Math.max(8, Math.min(CW - 8, p.x)); dow.y = Math.max(8, Math.min(CH - 8, p.y)); drawScene(phase === 'done' ? Tmax : 0); });
+            cv.addEventListener('pointerup', () => { dragging = false; });
+            cv.addEventListener('pointercancel', () => { dragging = false; });
+            document.getElementById('deployAz').addEventListener('input', function () { az = +this.value; document.getElementById('deployAzVal').textContent = az; drawScene(phase === 'done' ? Tmax : 0); });
+            document.getElementById('deployRun').addEventListener('click', run);
+            document.getElementById('deployReset').addEventListener('click', reset);
+            drawScene(0);
         })();
     </script>
 </body>
