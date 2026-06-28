@@ -588,6 +588,45 @@
         </div>
     </section>
 
+    <!-- ✨ P4：雙都卜勒風場合成（為什麼需要一個車隊） -->
+    <section id="dualdoppler-section" class="reveal max-w-7xl w-full mx-auto p-4 mt-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-2xl">
+            <div class="border-b border-slate-800 pb-3 mb-4">
+                <h2 class="text-xl font-black text-white flex items-center gap-2"><i class="fa-solid fa-arrows-left-right-to-line text-emerald-400"></i> 雙都卜勒合成：為什麼追風要一整個車隊？</h2>
+                <p class="text-xs text-slate-400 mt-1 leading-relaxed">單台雷達只量得到「風往我這／離我多快」（視線方向分量），側向的風測不到。兩台以上 DOW 從不同角度同時觀測，把各自的視線分量交叉，就能還原真正的二維風向量。拖曳地圖上的 DOW，讓兩束波在風暴處的交角接近 90°，合成最準。</p>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div class="lg:col-span-2">
+                    <canvas id="ddCanvas" role="img" aria-label="雙都卜勒風場合成俯視互動地圖" width="620" height="440" class="w-full rounded bg-black border border-slate-800 cursor-grab active:cursor-grabbing touch-none"></canvas>
+                    <p class="text-[10px] text-slate-500 mt-1">灰色細箭頭＝真實風場；彩色箭頭＝雷達合成結果（<span class="text-emerald-400">綠</span>＝準、<span class="text-amber-400">黃</span>＝普通、<span class="text-red-400">紅</span>＝交角太差不可靠）。拖曳 DOW 標記移動位置。</p>
+                </div>
+                <div class="bg-slate-950 border border-slate-800 rounded-lg p-4 flex flex-col gap-3">
+                    <div>
+                        <span class="text-xs font-mono text-slate-500 uppercase block mb-1.5">部署雷達台數</span>
+                        <div class="grid grid-cols-3 gap-1.5" id="ddCountBtns">
+                            <button data-n="1" class="dd-count py-1.5 rounded text-xs font-mono font-bold bg-slate-900 border border-slate-800 text-slate-400">1 台</button>
+                            <button data-n="2" class="dd-count py-1.5 rounded text-xs font-mono font-bold bg-emerald-900/30 border border-emerald-500 text-emerald-400">2 台</button>
+                            <button data-n="3" class="dd-count py-1.5 rounded text-xs font-mono font-bold bg-slate-900 border border-slate-800 text-slate-400">3 台</button>
+                        </div>
+                    </div>
+                    <div class="bg-slate-900 border border-slate-800 rounded p-2 text-xs font-mono">
+                        <div class="flex justify-between"><span class="text-slate-500">風暴處波束交角</span><span id="ddAngle" class="text-emerald-300">—</span></div>
+                        <div class="flex justify-between mt-1"><span class="text-slate-500">合成可靠度</span><span id="ddQuality" class="text-emerald-400">—</span></div>
+                    </div>
+                    <p id="ddVerdict" class="text-xs text-slate-300 leading-relaxed flex-grow"></p>
+                    <details>
+                        <summary class="text-[10px] text-emerald-400/80 cursor-pointer hover:text-emerald-300 select-none">📐 原理</summary>
+                        <p class="text-[10px] text-slate-400 font-mono mt-1 pl-3 border-l border-slate-700 leading-relaxed">
+                            每台雷達只得視線分量：V_r = u·e_x + v·e_y（e 為雷達指向單位向量）。<br>
+                            ≥2 台 → 解聯立方程式得水平風 (u, v)。<br>
+                            兩束交角越接近 90°，解越穩定；接近 0°/180°（共線）時誤差爆增。
+                        </p>
+                    </details>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- 腳部宣告 -->
     <footer class="border-t border-slate-800 bg-slate-900 px-4 py-6 mt-8">
         <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-400">
@@ -2263,6 +2302,138 @@
                 (DRAW[(BLOCKS.find(b => b.key === current) || BLOCKS[0]).draw] || drawTx)();
             }));
             render('tx');
+        })();
+
+        // ==========================================
+        // P4：雙都卜勒風場合成互動
+        // ==========================================
+        ;(function () {
+            const cv = document.getElementById('ddCanvas');
+            if (!cv) return;
+            const g = cv.getContext('2d');
+            const CW = 620, CH = 440;
+            const sx = 310, sy = 165, Rc = 60, Vmax = 42;   // 風暴(渦旋)中心與強度
+            const radars = [{ x: 150, y: 400 }, { x: 470, y: 400 }, { x: 310, y: 425 }];
+            let nRadars = 2;
+            let dragIdx = -1;
+
+            // 真實風場(canvas 座標：Rankine 渦旋 + 平流)
+            function windTrue(px, py) {
+                const dx = px - sx, dy = py - sy, r = Math.hypot(dx, dy) || 1;
+                const vt = r < Rc ? Vmax * r / Rc : Vmax * Rc / r;
+                return { u: -dy / r * vt + 8, v: dx / r * vt + 5 };
+            }
+            // 某雷達在點 p 的視線單位向量
+            function beamUnit(ri, px, py) {
+                const dx = px - radars[ri].x, dy = py - radars[ri].y, r = Math.hypot(dx, dy) || 1;
+                return { x: dx / r, y: dy / r };
+            }
+            // 用 nRadars 台雷達的視線分量，最小平方還原 (u,v)，並回傳幾何行列式(品質)
+            function synth(px, py) {
+                let a11 = 0, a12 = 0, a22 = 0, b1 = 0, b2 = 0;
+                const t = windTrue(px, py);
+                for (let i = 0; i < nRadars; i++) {
+                    const e = beamUnit(i, px, py);
+                    const vr = t.u * e.x + t.v * e.y + (Math.random() - 0.5) * 2.0; // 視線分量 + 量測雜訊
+                    a11 += e.x * e.x; a12 += e.x * e.y; a22 += e.y * e.y;
+                    b1 += e.x * vr; b2 += e.y * vr;
+                }
+                const det = a11 * a22 - a12 * a12;
+                if (Math.abs(det) < 0.04) return { u: 0, v: 0, q: 0, ok: false };
+                return { u: (a22 * b1 - a12 * b2) / det, v: (-a12 * b1 + a11 * b2) / det, q: Math.min(1, det / 0.5), ok: true };
+            }
+            function qColor(q, a) { a = a || 0.95; return q > 0.6 ? 'rgba(16,185,129,' + a + ')' : q > 0.3 ? 'rgba(234,179,8,' + a + ')' : 'rgba(239,68,68,' + a + ')'; }
+            function arrow(x, y, u, v, sc, color, lw) {
+                const ex = x + u * sc, ey = y + v * sc;
+                g.strokeStyle = color; g.lineWidth = lw || 1.6; g.beginPath(); g.moveTo(x, y); g.lineTo(ex, ey); g.stroke();
+                const ang = Math.atan2(ey - y, ex - x), hl = 5;
+                g.beginPath(); g.moveTo(ex, ey); g.lineTo(ex - hl * Math.cos(ang - 0.4), ey - hl * Math.sin(ang - 0.4)); g.lineTo(ex - hl * Math.cos(ang + 0.4), ey - hl * Math.sin(ang + 0.4)); g.closePath(); g.fillStyle = color; g.fill();
+            }
+
+            function render() {
+                g.fillStyle = '#080d1a'; g.fillRect(0, 0, CW, CH);
+                // 風暴回波示意(淡)
+                const rg = g.createRadialGradient(sx, sy, 5, sx, sy, 110);
+                rg.addColorStop(0, 'rgba(239,68,68,0.28)'); rg.addColorStop(0.5, 'rgba(234,179,8,0.16)'); rg.addColorStop(1, 'rgba(16,185,129,0)');
+                g.fillStyle = rg; g.beginPath(); g.arc(sx, sy, 110, 0, Math.PI * 2); g.fill();
+                g.fillStyle = 'rgba(255,255,255,0.5)'; g.font = '10px monospace'; g.fillText('超級胞', sx - 16, sy - 116);
+
+                // 風場格點：灰色真實 + 彩色合成
+                const sc = 0.7, step = 46;
+                let qSum = 0, qN = 0;
+                for (let y = 36; y < CH - 16; y += step) {
+                    for (let x = 36; x < CW - 16; x += step) {
+                        const t = windTrue(x, y);
+                        arrow(x, y, t.u, t.v, sc, 'rgba(148,163,184,0.32)', 1); // 真實(灰)
+                        const s = synth(x, y);
+                        if (s.ok) {
+                            const uu = Math.max(-60, Math.min(60, s.u)), vv = Math.max(-60, Math.min(60, s.v));
+                            arrow(x, y, uu, vv, sc, qColor(s.q), 1.7);
+                            qSum += s.q; qN++;
+                        }
+                    }
+                }
+
+                // 雷達標記與波束連線
+                for (let i = 0; i < nRadars; i++) {
+                    const r = radars[i];
+                    g.strokeStyle = 'rgba(16,185,129,0.35)'; g.setLineDash([4, 4]); g.lineWidth = 1;
+                    g.beginPath(); g.moveTo(r.x, r.y); g.lineTo(sx, sy); g.stroke(); g.setLineDash([]);
+                    g.fillStyle = '#10b981'; g.fillRect(r.x - 6, r.y - 6, 12, 12);
+                    g.strokeStyle = '#063'; g.strokeRect(r.x - 6, r.y - 6, 12, 12);
+                    g.fillStyle = '#a7f3d0'; g.font = 'bold 10px monospace'; g.fillText('DOW' + (i + 1), r.x - 12, r.y + 22);
+                }
+
+                // 讀數：風暴處交角與平均品質
+                const angEl = document.getElementById('ddAngle'), qEl = document.getElementById('ddQuality'), vEl = document.getElementById('ddVerdict');
+                if (nRadars < 2) {
+                    angEl.textContent = '—'; qEl.textContent = '單台無法合成'; qEl.className = 'text-red-400';
+                    vEl.textContent = '只有一台雷達：僅能得到視線方向的徑向速度，無法還原真正的風向。這就是為什麼需要第二台、甚至整個車隊。';
+                } else {
+                    const e1 = beamUnit(0, sx, sy), e2 = beamUnit(1, sx, sy);
+                    let ang = Math.acos(Math.max(-1, Math.min(1, e1.x * e2.x + e1.y * e2.y))) * 180 / Math.PI;
+                    if (ang > 90) ang = 180 - ang; // 取與 90° 的接近度
+                    const avgQ = qN ? qSum / qN : 0;
+                    angEl.textContent = ang.toFixed(0) + '°';
+                    qEl.textContent = Math.round(avgQ * 100) + '%';
+                    qEl.className = avgQ > 0.6 ? 'text-emerald-400' : avgQ > 0.3 ? 'text-amber-400' : 'text-red-400';
+                    vEl.textContent = avgQ > 0.6
+                        ? '幾何良好：兩束在風暴處交角夠大，合成風場貼近真實。實戰中 DOW 車隊正是這樣分開部署、交叉掃描。'
+                        : avgQ > 0.3
+                        ? '幾何普通：交角偏小，部分區域合成開始失真。試著把 DOW 拉開、讓交角更接近 90°。'
+                        : '幾何很差：雷達幾乎共線，視線分量重複、解不穩定，合成風場大幅偏離真實。';
+                }
+            }
+
+            // 拖曳 DOW
+            function toCanvas(e) { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * CW / r.width, y: (e.clientY - r.top) * CH / r.height }; }
+            cv.addEventListener('pointerdown', e => {
+                const p = toCanvas(e);
+                for (let i = 0; i < nRadars; i++) { if (Math.hypot(p.x - radars[i].x, p.y - radars[i].y) < 16) { dragIdx = i; cv.setPointerCapture(e.pointerId); break; } }
+            });
+            cv.addEventListener('pointermove', e => {
+                if (dragIdx < 0) return;
+                const p = toCanvas(e);
+                radars[dragIdx].x = Math.max(10, Math.min(CW - 10, p.x));
+                radars[dragIdx].y = Math.max(10, Math.min(CH - 10, p.y));
+                render();
+            });
+            cv.addEventListener('pointerup', () => { dragIdx = -1; });
+            cv.addEventListener('pointercancel', () => { dragIdx = -1; });
+
+            // 台數切換
+            document.querySelectorAll('#ddCountBtns .dd-count').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    nRadars = +btn.getAttribute('data-n');
+                    document.querySelectorAll('#ddCountBtns .dd-count').forEach(b => {
+                        const on = b === btn;
+                        b.className = 'dd-count py-1.5 rounded text-xs font-mono font-bold ' + (on ? 'bg-emerald-900/30 border border-emerald-500 text-emerald-400' : 'bg-slate-900 border border-slate-800 text-slate-400');
+                    });
+                    if (typeof playPingSound === 'function') playPingSound(560 + nRadars * 40);
+                    render();
+                });
+            });
+            render();
         })();
     </script>
 </body>
