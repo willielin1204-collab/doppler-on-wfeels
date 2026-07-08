@@ -4,8 +4,9 @@
       "command": "npx",
       "args": ["--yes", "onshape-mcp"],
       "env": {
-        "ONSHAPE_ACCESS_KEY": "${ONSHAPE_ACCESS_KEY}",
-        "ONSHAPE_SECRET_KEY": "${ONSHAPE_SECRET_KEY}"
+        "ONSHAPE_MCP_AUTH__METHOD": "basic",
+        "ONSHAPE_MCP_AUTH__ACCESS_KEY": "${ONSHAPE_ACCESS_KEY}",
+        "ONSHAPE_MCP_AUTH__SECRET_KEY": "${ONSHAPE_SECRET_KEY}"
       }
     }
   }
